@@ -12,7 +12,7 @@
 /*
 -- Set the alarm for a time specified in ms.
 */
-void AlarmSet(/*int time*/);
+int AlarmSet(/*int time*/);
 
 /*
 -- Wait for the alarm, or return immediately if the alarm isn't set.

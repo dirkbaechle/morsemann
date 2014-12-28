@@ -53,7 +53,9 @@ int time, volume, pitch;
 	count = (1193180 / pitch) & 0xffff;
 
     ioctl(fd, KDMKTONE, (time << 16) | count);
-    AlarmSet(time); 
+    if (AlarmSet(time))
+      return 1;
+ 
     return 0;
 }
 

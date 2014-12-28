@@ -56,4 +56,5 @@ int BeepCleanup();
 int BeepResume();
 
 
-#endif _BEEP_H
+#endif /* _BEEP_H */
+

@@ -1,32 +1,35 @@
-# Makefile for/f"ur ``Morsemann v1.1''
-# by Dirk B"achle (dl9obn@darc.de), 07.03.2003
+# Makefile for/für ``Morsemann v1.2''
+# by Dirk B"achle (dl9obn@darc.de), 27.05.2007
 #
-# Available targets/Verf"ugbare ``Targets'':
-#   ncurses, curses, nocolor, allusers, clean
+# Available targets/Verfügbare ``Targets'':
+#   all, allusers, clean, clean-dist
 #
 
 # Your favourite C compiler/Ihr C-Kompiler
 CC	= gcc
 
+# Select your curses lib
+#CURSESLIB = -lcurses
+CURSESLIB = -lncurses
+
+# Uncomment next line if your curses terminal does not
+# properly support colors...
+# NOCOLORS = -DNO_COLORS
+
 #
 # You shouldn't have to edit something below here!!!
-# Ab dieser Zeile bitte nichts mehr "andern!!!
+# Ab dieser Zeile bitte nichts mehr ändern!!!
 #
 
 TARGET = morsemann
-CLIBS = -lm -lncurses
+CINCLUDES = -I./mmsound
+CLIBS = $(CURSESLIB) -L./mmsound -lmmsound
 
-default: ncurses
-	
+all: $(TARGET).c mmsound/libmmsound.a
+	$(CC) $(TARGET).c -o $(TARGET) $(CINCLUDES) $(CLIBS)
 
-ncurses: morsemann.c beep.h beepLinux.c alarm.h alarm.c
-	$(CC) *.c -o $(TARGET) $(CLIBS)
-
-curses: morsemann.c beep.h beepLinux.c alarm.h alarm.c
-	$(CC) *.c -o $(TARGET) -lm -lcurses
-
-nocolor: morsemann.c beep.h beepLinux.c alarm.h alarm.c
-	$(CC) *.c -DNO_COLORS -o $(TARGET) -lm -lcurses
+mmsound/libmmsound.a:
+	make -C mmsound
 
 allusers:
 	chown root:root ./morsemann
@@ -34,4 +37,8 @@ allusers:
 
 clean:
 	rm -f morsemann
+
+clean-dist:
+	rm -f morsemann
+	make -C mmsound clean
 

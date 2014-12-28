@@ -56,17 +56,19 @@ von Morsezeichen (CW).
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "mmsound.h"
+
 #ifdef DOS
 #include <time.h>
 #include <dos.h>
 #include <conio.h>
 #include <string.h>
 #else
+#include <string.h>
 #include <unistd.h>
 #include <curses.h>
 #include <time.h>
 #include <signal.h>
-#include "beep.h"
 #endif
 
 /*--------------------------------------------------------- Defines */
@@ -187,15 +189,6 @@ void writeChar(char b)
 }
 
 #ifndef DOS
-/** Erzeugt eine Pause von \a seconds Millisekunden.
-@param msec Anzahl der Millisekunden
-*/
-void delay(int msec)
-{
-  Beep(msec, 0, tone);
-  BeepWait();
-}
-
 /** Bewegt den Cursor an die Position \a xpos, \a ypos.
 @param xpos X-Koordinate
 @param ypos Y-Koordinate
@@ -252,16 +245,8 @@ void moveWrite(int ypos, int xpos, char *fmt, char *string)
 */
 void dit(void)
 {
-#ifdef DOS
-  sound(tone);
-  delay(dotLength);
-  nosound();
-  delay(dotLength);
-#else
-  Beep(dotLength, 10, tone);
-  BeepWait();
-  delay(dotLength);
-#endif
+  mmslPlayTone(dotLength);
+  mmslPlayPause(dotLength);
 }
 
 
@@ -270,42 +255,16 @@ void dit(void)
 */
 void dah(void)
 {
-#ifdef DOS
-  sound(tone);
-  delay(dotLength*3);
-  nosound();
-  delay(dotLength);
-#else
-  Beep(dotLength*3, 10, tone);
-  BeepWait();
-  delay(dotLength);
-#endif
+  mmslPlayTone(dotLength*3);
+  mmslPlayPause(dotLength);
 }
 
 /** Gibt einen Fehlerton aus.
 */
 void errorTone(void)
 {
-#ifdef DOS
-  sound(700);
-  delay(dotLength);
-  sound(600);
-  delay(dotLength);
-  sound(500);
-  delay(dotLength);
-  nosound();
-  delay(dotLength*3);
-#else
-  Beep(dotLength, 10, 700);
-  BeepWait();
-  Beep(dotLength, 10, 600);
-  BeepWait();
-  Beep(dotLength, 10, 500);
-  BeepWait();
-  delay(dotLength*3);
-#endif
+  mmslPlayErrorTone(dotLength);
 }
-
 
 /** Erzeugt eine Zufallszahl im Bereich von 0 bis \a maxNumber minus
 1.
@@ -522,30 +481,31 @@ void byeMessage(void)
   clrscr();
   gotoxy(centerX - 6, centerY);
   tone = (mmRandom(7)+6)*100;
+  mmslSetFrequency(tone);
   /* Setze Geschwindigkeit auf 120 bpm */
   dotLength = 50;
   outputSign('7');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   outputSign('3');
-  delay(dotLength*6);
+  mmslPlayPause(dotLength*6);
   writeChar(' ');
   outputSign('d');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   outputSign('e');
-  delay(dotLength*6);
+  mmslPlayPause(dotLength*6);
   writeChar(' ');
   outputSign('d');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   outputSign('l');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   outputSign('9');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   outputSign('o');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   outputSign('b');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   outputSign('n');
-  delay(500);
+  mmslPlayPause(500);
 }
 
 /** Ermittelt den zugeh"origen ANSI/ASCII-Kode des Zeichens mit
@@ -1189,7 +1149,7 @@ void outputMorseCode(void)
 #ifndef DOS
   refresh();
 #endif
-  delay(1000);
+  mmslPlayPause(1000);
 
   errorCount = 0;
 
@@ -1231,7 +1191,7 @@ void outputMorseCode(void)
 	lastWord[charCount-1] = lastSign;
       }
 #endif
-      delay(dotLength*2+(delayFactor-1)*3);
+      mmslPlayPause(dotLength*2+(delayFactor-1)*3);
       if (kbhit() != 0)
       {
 	b = getch();
@@ -1284,7 +1244,7 @@ void outputMorseCode(void)
       }
     }
 
-    delay(dotLength*4*delayFactor);
+    mmslPlayPause(dotLength*4*delayFactor);
   } while ((currentLength < totalLength) && (error == MM_FALSE));
 
   if (kbhit() != 0)
@@ -1294,7 +1254,7 @@ void outputMorseCode(void)
 
   writeString("\n\r");
   dit();dah();dit();dah();dit();writeChar('+');
-  delay(dotLength*2);
+  mmslPlayPause(dotLength*2);
   writeChar(' ');dit();dit();dit();dah();dit();dah();writeString("sk");
   if (confirmChars != 0)
   {
@@ -1371,6 +1331,7 @@ void mainSelection(void)
       switch (currentSelection)
       {
 	case 1: tone = (mmRandom(7) + 6) * 100;
+                mmslSetFrequency(tone);
 		outputMorseCode();
 		break;
 	case 2: optionsSelection();
@@ -1387,12 +1348,12 @@ void mainSelection(void)
 */
 static void finish(int sig)
 {
-    endwin();
+  endwin();
 
-    /* ``Non-curses'' Funktionen aufr"aumen */
-    BeepCleanup();
+  /* ``Non-curses'' Funktionen aufr"aumen */
+  mmslCloseSoundSystem();
 
-    exit(0);
+  exit(0);
 }
 #endif
 
@@ -1400,6 +1361,9 @@ static void finish(int sig)
 */
 int main(void)
 {
+  if (0 != mmslInitSoundSystem())
+    return 1;
+
 #ifdef DOS
   hideCursor();
   textModusNormal();
@@ -1414,15 +1378,6 @@ int main(void)
 
   clrscr();
 #else
-  if (BeepInit () != 0)
-  {
-    fprintf (stderr, "BeepInit: Can't access speaker!\n");
-    exit (1);
-  }
-
-  Beep(100, 0, 800);
-  BeepWait();
-
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
   (void) initscr();      /* initialize the curses library */
