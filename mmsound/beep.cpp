@@ -41,8 +41,7 @@ int BeepInit()
   return 0;
 }
 
-int Beep(time, volume, pitch)
-int time, volume, pitch;
+int Beep(int time, int volume, int pitch)
 {
     int count;
 

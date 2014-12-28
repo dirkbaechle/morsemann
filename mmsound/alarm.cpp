@@ -10,17 +10,6 @@
 
 static int alarmPending = 0;  /* Nonzero when the alarm is set. */
 
-static int ualarm();
-#ifndef LINUXSIGS
-static void AlarmHandler();
-#else
-#ifdef USE_SIGINFO
-static void AlarmHandler(int sig, siginfo_t *siginfo, void *context);
-#else
-static void AlarmHandler();
-#endif /*USE_SIGINFO*/
-#endif
-
 /* Default BSDSIGS for backwards compatibility of makefile */
 #ifndef BSDSIGS
 #ifndef POSIXSIGS
@@ -31,6 +20,57 @@ static void AlarmHandler();
 #endif
 #endif
 #endif
+
+static int ualarm(unsigned int us)
+{
+    struct itimerval rttimer, old_rttimer;
+
+    rttimer.it_value.tv_sec  = us / 1000000;
+    rttimer.it_value.tv_usec = us % 1000000;
+    rttimer.it_interval.tv_sec  = 0;
+    rttimer.it_interval.tv_usec = 0;
+    if (setitimer(ITIMER_REAL, &rttimer, &old_rttimer)) 
+        return 1;
+
+    return 0;
+}
+
+
+#ifdef __hpux
+
+static void AlarmHandler(int sig, 
+                         int code, 
+                         struct sigcontext *scp)
+{
+    alarmPending = 0;
+    /* Prevent alarm signal from interrupting any pending read. */
+    if (scp->sc_syscall == SYS_READ)
+	scp->sc_syscall_action = SIG_RESTART;
+}
+
+#else
+
+#ifndef LINUXSIGS
+static void AlarmHandler()
+{
+    alarmPending = 0;
+}
+#else
+#ifdef USE_SIGINFO
+static void AlarmHandler(int sig, siginfo_t *siginfo, void *context)
+{
+    alarmPending = 0;
+}
+#else
+static void AlarmHandler(int sig)
+{
+    alarmPending = 0;
+}
+#endif /*USE_SIGINFO*/
+#endif /*LINUXSIGS*/
+
+#endif /* __hpux */
+
 
 int AlarmSet(int time)
 {
@@ -63,7 +103,7 @@ int AlarmSet(int time)
 #endif /*LINUXSIGS*/
 #endif /*POSIXSIGS*/
 #endif /*BSDSIGS*/
-   return ualarm(1000 * time, 0);
+   return ualarm(1000 * time);
 }
 
 
@@ -107,54 +147,4 @@ void AlarmWait()
 #endif /*BSDSIGS*/
 
 }
-
-static int ualarm(unsigned int us)
-{
-    struct itimerval rttimer, old_rttimer;
-
-    rttimer.it_value.tv_sec  = us / 1000000;
-    rttimer.it_value.tv_usec = us % 1000000;
-    rttimer.it_interval.tv_sec  = 0;
-    rttimer.it_interval.tv_usec = 0;
-    if (setitimer(ITIMER_REAL, &rttimer, &old_rttimer)) 
-        return 1;
-
-    return 0;
-}
-
-
-#ifdef __hpux
-
-static void AlarmHandler(int sig, 
-                         int code, 
-                         struct sigcontext *scp)
-{
-    alarmPending = 0;
-    /* Prevent alarm signal from interrupting any pending read. */
-    if (scp->sc_syscall == SYS_READ)
-	scp->sc_syscall_action = SIG_RESTART;
-}
-
-#else
-
-#ifndef LINUXSIGS
-static void AlarmHandler()
-{
-    alarmPending = 0;
-}
-#else
-#ifdef USE_SIGINFO
-static void AlarmHandler(int sig, siginfo_t *siginfo, void *context)
-{
-    alarmPending = 0;
-}
-#else
-static void AlarmHandler()
-{
-    alarmPending = 0;
-}
-#endif /*USE_SIGINFO*/
-#endif /*LINUXSIGS*/
-
-#endif /* __hpux */
 

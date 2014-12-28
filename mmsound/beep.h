@@ -32,7 +32,7 @@ int BeepInit();
 --
 -- Returns nonzero on error.
 */
-int Beep(/*int time, int volume, int pitch*/);
+int Beep(int time, int volume, int pitch);
 
 
 /*

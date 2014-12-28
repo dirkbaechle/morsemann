@@ -1,12 +1,12 @@
-# Makefile for/für ``Morsemann v1.2''
-# by Dirk B"achle (dl9obn@darc.de), 27.05.2007
+# Makefile for/für ``Morsemann v2.0''
+# by Dirk B"achle (dl9obn@darc.de), 10.08.2008
 #
 # Available targets/Verfügbare ``Targets'':
 #   all, allusers, clean, clean-dist
 #
 
-# Your favourite C compiler/Ihr C-Kompiler
-CC	= gcc
+# Your favourite C++ compiler/Ihr C++-Kompiler
+CC	= g++
 
 # Select your curses lib
 #CURSESLIB = -lcurses
@@ -25,8 +25,8 @@ TARGET = morsemann
 CINCLUDES = -I./mmsound
 CLIBS = $(CURSESLIB) -L./mmsound -lmmsound
 
-all: $(TARGET).c mmsound/libmmsound.a
-	$(CC) $(TARGET).c -o $(TARGET) $(CINCLUDES) $(CLIBS)
+all: $(TARGET).cpp mmsound/libmmsound.a
+	$(CC) $(TARGET).cpp -o $(TARGET) $(CINCLUDES) $(CLIBS)
 
 mmsound/libmmsound.a:
 	make -C mmsound
