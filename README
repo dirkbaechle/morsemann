@@ -1,0 +1,140 @@
+Morsemann - Ein Programm f"ur das Lernen und "Uben des H"orens
+            von Morsezeichen (CW)
+
+Copyright (C) 2003 by Dirk B"achle (dl9obn@darc.de)
+
+http://www.darc.de/distrikte/h/43/programme/morsemann
+
+
+0. Disclaimer
+-------------
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public
+License along with this program; if not, write to the 
+
+Free Software Foundation, Inc.
+675 Mass Ave
+Cambridge
+MA 02139
+USA
+
+(siehe auch die Datei "COPYING")
+
+
+1. Kompilieren des Programmes
+-----------------------------
+
+Die folgenden Anleitungen setzen voraus, dass Sie bereits
+das Archiv `mm1_1src.zip' entpackt haben und ein Verzeichnis
+namens `morsemann' erzeugt wurde.
+
+1.1 Linux
+--------------
+
+Wechseln sie in das erzeugte Verzeichnis `morsemann'.
+
+Geben Sie das Kommando
+
+  make
+
+ein. Nach kurzer Zeit sollte der Kompilier-Vorgang stoppen und eine
+ausf"uhrbare Datei namens `morsemann' erzeugt haben. Denken Sie bitte
+daran, dass sie Root-Rechte brauchen um den ``Morsemann'' zu starten
+(nicht f"ur das Kompilieren!).
+Wechseln Sie also vor dem Start des Programmes mit
+
+  su
+
+in den Superuser-Modus. 
+Falls man nicht immer wieder `su' und das Passwort eingeben
+m"ochte, kann man f"ur die Datei `morsemann' auch das entsprechende
+Ausf"uhrungs-Bit setzen. Dazu wechselt man in den Superuser-Modus und
+ruft:
+
+  make allusers
+
+auf. Anschliessend kann man den ``Morsemann'' als normaler Benutzer/User
+starten (er wird aber im Root-Modus ausgef"uhrt)...
+
+
+Beschwert sich `make' dar"uber, dass es den Kompiler `gcc' nicht finden
+konnte, so haben Sie zwei M"oglichkeiten: 
+
+  a.) Den `gcc' installieren.
+  b.) Sie editieren das `Makefile' und setzen die Variable `CC' auf den
+      C-Kompiler, der in Ihrer Linux-Distribution installiert ist
+      (z.B. `cc').
+
+Falls der Linker die Library `ncurses' nicht finden kann, so haben Sie
+diese wahrscheinlich nicht installiert. Erneut haben Sie zwei Optionen:
+
+  a.) `ncurses' nachtr"aglich installieren. Sollte diese nicht in
+      Ihrer Linux-Distribution enthalten sein, k"onnen Sie sie von
+
+        ftp://ftp.gnu.org/pub/gnu/ncurses/ncurses.tar.gz
+
+      herunterladen. 
+  b.) Sie kompilieren den ``Morsemann'' mit dem Aufruf
+
+        make curses
+
+      oder, falls sich der Kompiler immer noch beschwert, ohne Farben mit
+
+        make nocolor
+
+
+1.2 DOS/Windows
+---------------
+
+F"ur das Kompilieren unter DOS/Windows ben"otigt man nur die Datei
+`morsemann.c'. Alle anderen `*.c'- und `*.h'-Dateien dienen dem
+Ansteuern des PC-Speakers unter Linux!
+
+Es reicht also die Datei `morsemann.c' in den von Ihnen verwendeten
+Kompiler zu laden (z.B. ``TurboC'' oder ``MSVC'') und zu kompilieren.
+Vorher muss jedoch das ``Define'' namens ``DOS'' gesetzt werden,
+(auch beim Kompilieren unter Windows!).
+
+Entfernen Sie dazu die Kommentare um die Anweisung
+
+  #define DOS
+
+am Anfang der Quelldatei `morsemann.c'. Beim Kompilieren unter
+DOS sollte zus"atzlich das ``Define''
+
+  #define ASCII
+
+auf die gleiche Weise gesetzt werden, damit die Umlaute in den
+Programmtexten korrekt ausgegeben werden.
+
+2. Quellcode-Dokumentation
+--------------------------
+
+Der Quellcode (zumindest der in ``morsemann.c'') ist mit speziellen
+C-Kommentaren versehen. 
+Mit dem Programm "Doxygen" (http://www.stack.nl/~dimitri/doxygen) kann
+bei Bedarf leicht eine Dokumentation in HTML oder LaTeX erstellt
+werden. Lesen Sie bitte zu diesem Zweck die Anleitung von "Doxygen".
+
+3. Credits
+----------
+
+Die Dateien `beep.h', `beepLinux.c' und `alarm.[ch]' wurden 
+unver"andert dem Programm `morse' von Joe Dellinger entnommen. 
+Jeglicher Dank, daf"ur dass man unter Linux die Morsezeichen auch
+h"ort und nicht nur sieht, geb"uhrt daher Joe Dellinger,
+Scott Seligman und John Paul Morrison.
+
+
+Dirk B"achle, 2003-03-07
+
