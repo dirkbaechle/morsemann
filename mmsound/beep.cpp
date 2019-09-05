@@ -28,6 +28,9 @@
 #include "alarm.h"
 #include "beep.h"
 
+#include <iostream>
+using std::cerr;
+using std::endl;
 
 static int fd;
 
@@ -35,7 +38,7 @@ int BeepInit()
 {
   if ((fd = open("/dev/console",O_WRONLY)) == -1)
     {
-      fprintf(stderr,"You have no permissions to use /dev/console (chmod a+w).\n");
+      cerr << "You have no permissions to use /dev/console (chmod a+w)." << endl;
       return 1;
     }
   return 0;

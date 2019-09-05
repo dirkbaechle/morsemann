@@ -6,7 +6,7 @@
 #
 
 # Your favourite C compiler/Ihr C-Kompiler
-CC	= g++
+CXX	= g++
 # Your favourite archiver (ar)/Ihr Archivierer (ar)
 AR = ar
 # Your favourite Ranlib (ranlib)/Ihr Ranlib-Programm (ranlib)
@@ -19,7 +19,7 @@ RANLIB = ranlib
 
 TARGET = mmsound
 AROBJS = beep.o alarm.o mmsound.o
-CINCLUDES = -DLINUXSIGS
+CXXFLAGS += -DLINUXSIGS
 
 all: lib$(TARGET).a
 	
@@ -30,7 +30,7 @@ lib$(TARGET).a: $(AROBJS)
 	$(RANLIB) lib$(TARGET).a
 
 %.o: %.cpp %.h
-	$(CC) $< -c -o $@ $(CINCLUDES)
+	$(CXX) $< -c -o $@ $(CXXFLAGS) $(CINCLUDES)
 
 clean:
 	rm -f lib$(TARGET).a

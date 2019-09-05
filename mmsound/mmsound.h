@@ -1,21 +1,18 @@
 #ifndef MMSOUND_H
 #define MMSOUND_H
 
-#define MMSL_YES 0
-#define MMSL_NO  1
-
-#define MMSL_SUCCESS 0
-#define MMSL_ERROR   1
+#include <string>
 
 /** defines for the different sound systems */
-#define MMSL_SPEAKER 0
-#define MMSL_ALSA    1
-#define MMSL_OSS     2
+#define MMSL_NONE    0
+#define MMSL_SPEAKER 1
+#define MMSL_ALSA    2
+#define MMSL_OSS     3
 
-extern int mmslInitSoundSystem();
+extern bool mmslInitSoundSystem(int system, const std::string &device="");
 extern void mmslCloseSoundSystem();
 
-extern int mmslSoundSystemAvailable(int system);
+extern bool mmslSoundSystemAvailable(int system);
 
 extern void mmslSetAttack(int attack);
 extern void mmslSetFrequency(int frequency);

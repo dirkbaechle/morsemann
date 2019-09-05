@@ -66,7 +66,7 @@ von Morsezeichen (CW).
 #else
 #include <string.h>
 #include <unistd.h>
-#include <curses.h>
+#include <ncurses.h>
 #include <time.h>
 #include <signal.h>
 #endif
@@ -1361,7 +1361,7 @@ static void finish(int sig)
 */
 int main(void)
 {
-  if (0 != mmslInitSoundSystem())
+  if (0 != mmslInitSoundSystem(MMSL_SPEAKER))
     return 1;
 
 #ifdef DOS

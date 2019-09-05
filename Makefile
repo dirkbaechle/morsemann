@@ -6,7 +6,7 @@
 #
 
 # Your favourite C++ compiler/Ihr C++-Kompiler
-CC	= g++
+CXX	= g++
 
 # Select your curses lib
 #CURSESLIB = -lcurses
@@ -14,7 +14,12 @@ CURSESLIB = -lncurses
 
 # Uncomment next line if your curses terminal does not
 # properly support colors...
-# NOCOLORS = -DNO_COLORS
+# CXXFLAGS += -DNO_COLORS
+
+SOUNDLIBS =
+
+CXXFLAGS += -DHAVE_ALSA
+SOUNDLIBS += -lasound
 
 #
 # You shouldn't have to edit something below here!!!
@@ -23,10 +28,12 @@ CURSESLIB = -lncurses
 
 TARGET = morsemann
 CINCLUDES = -I./mmsound
-CLIBS = $(CURSESLIB) -L./mmsound -lmmsound
+CLIBS = $(CURSESLIB) $(SOUNDLIBS) -L./mmsound -lmmsound
+
+export CXXFLAGS
 
 all: $(TARGET).cpp mmsound/libmmsound.a
-	$(CC) $(TARGET).cpp -o $(TARGET) $(CINCLUDES) $(CLIBS)
+	$(CXX) $(TARGET).cpp -o $(TARGET) $(CXXFLAGS) $(CINCLUDES) $(CLIBS)
 
 mmsound/libmmsound.a:
 	make -C mmsound
