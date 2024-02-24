@@ -1,5 +1,4 @@
-# Makefile for/für ``MorseMann Soundlib v1.2''
-# by Dirk Bächle (dl9obn@darc.de), 27.05.2007
+# Makefile for/für ``MorseMann Soundlib''
 #
 # Available targets/Verfügbare ``Targets'':
 #   all, clean

@@ -1,5 +1,7 @@
 #include "mmsound.h"
 #include "beep.h"
+#include "alarm.h"
+
 #ifdef HAVE_ALSA
 #include <cmath>
 #include <alsa/asoundlib.h>
@@ -203,14 +205,10 @@ void mmslPlayPause(unsigned int duration)
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-      Beep((int) duration, 0, mmslFrequency);
-      BeepWait();
-      break;
     case MMSL_ALSA:
-#ifdef HAVE_ALSA
-      Beep((int) duration, 0, mmslFrequency);
-      BeepWait();
-#endif
+      AlarmWait();
+      AlarmSet(time);
+      AlarmWait();
       break;
     default:
       break;
