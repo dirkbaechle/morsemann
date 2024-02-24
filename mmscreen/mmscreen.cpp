@@ -1,58 +1,22 @@
 
-/* Benutzt conio.h usw. statt der */
-/* `ncurses' Funktionen, falls gesetzt. */
-/* #define DOS */
-
-/* Gibt die Umlaute in Textausgaben ASCII-codiert */
-/* aus, falls gesetzt. */
-/* #define ASCII */
-
-/* Benutzt keine Farben, sondern nur das */
-/* (hoffentlich) vom Terminal unterstützte ``Highlighting'' */
-/* #define NO_COLORS */
-
 /*-------------------------------------------------------- Includes */
+
+#include "mmscreen.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sstream>  
 
-#ifdef DOS
-#include <dos.h>
-#include <conio.h>
-#include <string.h>
-#else
-#include <string.h>
 #include <unistd.h>
 #include <curses.h>
-#endif
+
+using std::string;
 
 /*--------------------------------------------------------- Defines */
 
 /*-------------------------------------------------------- Typedefs */
 
-#ifdef DOS
-typedef char keyChar;
-#else
-typedef unsigned int keyChar;
-#endif
-
 /*---------------------------------------------------- Const values */
-
-#ifdef DOS
-const int KEY_UP = 72;
-const int KEY_DOWN = 80;
-const int KEY_LEFT = 75;
-const int KEY_RIGHT = 77;
-const int KEY_BACKSPACE = 8;
-#endif
-
-const int MM_TRUE = 1;
-const int MM_FALSE = 0;
-
-const int GROUP_WIDTH = 15;
-const int OPT_LEFT_WIDTH = 19;
-const int OPT_RIGHT_WIDTH = 8;
-const int MENU_WIDTH = 4;
 
 /*------------------------------------------------ Global variables */
 
@@ -71,14 +35,10 @@ int centerY = 12;
 Position auf dem Bildschirm.
 @param string String
 */
-void writeString(char *string)
+void writeString(const string& str)
 {
-#ifdef DOS
-  cprintf("%s", string);
-#else
-  printw("%s", string);
+  printw("%s", str.c_str());
   refresh();
-#endif
 }
 
 /** Schreibt die Zahl \a number an die aktuelle
@@ -87,12 +47,8 @@ Position auf dem Bildschirm.
 */
 void writeNumber(int number)
 {
-#ifdef DOS
-  cprintf("%d", number);
-#else
   printw("%d", number);
   refresh();
-#endif
 }
 
 /** Schreibt den Buchstaben \a b an die aktuelle
@@ -101,15 +57,10 @@ Position auf dem Bildschirm.
 */
 void writeChar(char b)
 {
-#ifdef DOS
-  cprintf("%c", b);
-#else
   addch(b);
   refresh();
-#endif
 }
 
-#ifndef DOS
 /** Bewegt den Cursor an die Position \a xpos, \a ypos.
 @param xpos X-Koordinate
 @param ypos Y-Koordinate
@@ -147,19 +98,13 @@ int kbhit(void)
         return 1; /* Ja */
     return 0;     /* Nein */
 }
-#endif
 
 /** Schreibt den String \a string im Format \a fmt
 an die Position \a xpos, \a ypos.
 */
-void moveWrite(int ypos, int xpos, char *fmt, char *string)
+void moveWrite(int ypos, int xpos, const char *fmt, const string& str)
 {
-#ifdef DOS
-  gotoxy(xpos, ypos);
-  cprintf(fmt, string);
-#else
-  mvprintw(ypos-1, xpos-1, fmt, string);
-#endif
+  mvprintw(ypos-1, xpos-1, fmt, str.c_str());
 }
 
 /** Schaltet in den ``normalen'' Text-Modus, d.h.
@@ -168,19 +113,9 @@ weisse Schrift auf schwarzem Grund.
 void textModusNormal(void)
 {
 #ifdef NO_COLORS
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
-#else
   attroff(A_STANDOUT);
-#endif
-#else
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
 #else
   attrset(COLOR_PAIR(7));
-#endif
 #endif
 }
 
@@ -190,19 +125,9 @@ weiße Schrift auf blauem Grund.
 void textModusSelect(void)
 {
 #ifdef NO_COLORS
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
-#else
   attron(A_STANDOUT);
-#endif
-#else
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLUE);
 #else
   attrset(COLOR_PAIR(5));
-#endif
 #endif
 }
 
@@ -212,19 +137,9 @@ rote Schrift auf schwarzem Grund.
 void textModusError(void)
 {
 #ifdef NO_COLORS
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
-#else
   attron(A_STANDOUT);
-#endif
-#else
-#ifdef DOS
-  textcolor(RED);
-  textbackground(BLACK);
 #else
   attrset(COLOR_PAIR(1));
-#endif
 #endif
 }
 
@@ -232,52 +147,32 @@ void textModusError(void)
 */
 void hideCursor(void)
 {
-#ifdef DOS
-  union REGS inregs;
-
-  inregs.h.ah=0x01;
-  inregs.h.ch=0xF0;
-  inregs.h.cl=0x02;
-
-  int86(0x10,&inregs,&inregs);
-#else
   curs_set(0);
-#endif
 }
 
 /** Zeigt den Text-Cursor.
 */
 void showCursor(void)
 {
-#ifdef DOS
-  union REGS inregs;
-
-  inregs.h.ah=0x01;
-  inregs.h.ch=0x06;
-  inregs.h.cl=0x07;
-
-  int86(0x10,&inregs,&inregs);
-#else
   curs_set(1);
-#endif
 }
 
 /** Schreibt einen String an die übergebene Position. Stimmt
 die Auswahl mit der ID des Strings überein wird dieser mit
 weisser Schrift auf blauem Grund dargestellt.
-@param string String
+@param str String
 @param xpos Position in x-Richtung
 @param ypos Position in y-Richtung
 @param stringID ID-Nummer des Strings
 @param selected Aktuelle Auswahl
 */
-void writeSelection(char *string, int xpos, int ypos, 
+void writeSelection(const string& str, int xpos, int ypos, 
                     int stringID, int selected)
 {
   if (stringID == selected)
     textModusSelect();
 
-  moveWrite(ypos, xpos, "%s", string);
+  moveWrite(ypos, xpos, "%s", str);
 
   if (stringID == selected)
     textModusNormal();
@@ -288,38 +183,29 @@ void writeSelection(char *string, int xpos, int ypos,
 @param xpos x-Koordinate
 @param ypos y-Koordinate
 @param max Maximale Anzahl der Buchstaben
-@param string Zeiger auf den String
+@param str Aktueller String
+@return Neuer String
 */
-void readString(int xpos, int ypos, int max, char *string)
+string readString(int xpos, int ypos, int max, const string& str)
 {
   keyChar letter = '0';
-  char stringCopy[255];
-  int stringLength = strlen(string);
+  string stringCopy(str);
+  int stringLength = stringCopy.size();
 
   showCursor();
-
-  strcpy(stringCopy, string);
 
   moveWrite(ypos, xpos, "%s", stringCopy);
 
   while ((letter != 27) && (letter != 13))
   {
     letter = getch();
-#ifdef DOS
-    if (letter == 0)
-    {
-      letter = getch();
-    }
-    else
-    {
-#endif
 
       if (letter == KEY_BACKSPACE)
       {
 	if (stringLength > 0)
 	{
 	  stringLength--;
-	  stringCopy[stringLength] = 0;
+	  stringCopy = stringCopy.substr(0, stringLength);
           moveWrite(ypos, xpos, "%s ", stringCopy);
           gotoxy(xpos+stringLength, ypos);
 	}
@@ -330,24 +216,22 @@ void readString(int xpos, int ypos, int max, char *string)
         {
 	  if (stringLength < max)
 	  {
-	    stringCopy[stringLength] = letter;
+	    stringCopy += letter;
 	    stringLength++;
-	    stringCopy[stringLength] = 0;
 	    moveWrite(ypos, xpos, "%s", stringCopy);
 	  }
         }
       }
-#ifdef DOS
-    }
-#endif
   }
-  if (letter != 27)
+  if (letter == 27)
   {
-    strcpy(string, stringCopy);
+    // Abbruch -> Alten String wiederherstellen
+    stringCopy = str;
   }
 
   hideCursor();
 
+  return stringCopy;
 }
 
 /** Liest eine Nummer an der Position (xpos,ypos) mit maximal
@@ -355,39 +239,33 @@ max Stellen linksbündig ein.
 @param xpos x-Koordinate
 @param ypos y-Koordinate
 @param max Maximale Anzahl der Stellen
-@param number Zeiger auf die Nummer
+@param number Aktuelle Nummer
+@return Neue Nummer
 */
-void readNumber(int xpos, int ypos, int max, int *number)
+int readNumber(int xpos, int ypos, int max, int number)
 {
   keyChar letter = '0';
-  char copyString[50];
-  int stringLength = 0;
+  // Int zu string konvertieren
+  std::stringstream stream;
+  stream << number;
+  string stringCopy;
+  stream >> stringCopy;
+  int stringLength = stringCopy.size();
 
   showCursor();
 
-  sprintf(copyString, "%d", *number);
-  stringLength = strlen(copyString);
-
-  moveWrite(ypos, xpos, "%s", copyString);
+  moveWrite(ypos, xpos, "%s", stringCopy);
 
   while ((letter != 27) && (letter != 13))
   {
     letter = getch();
-#ifdef DOS
-    if (letter == 0)
-    {
-      letter = getch();
-    }
-    else
-    {
-#endif
       if (letter == KEY_BACKSPACE)
       {
 	if (stringLength > 0)
 	{
 	  stringLength--;
-	  copyString[stringLength] = 0;
-	  moveWrite(ypos, xpos, "%s ", copyString);
+	  stringCopy = stringCopy.substr(0, stringLength);
+          moveWrite(ypos, xpos, "%s ", stringCopy);
           gotoxy(xpos+stringLength, ypos);
 	}
       }
@@ -397,24 +275,23 @@ void readNumber(int xpos, int ypos, int max, int *number)
         {
 	  if (stringLength < max)
 	  {
-	    copyString[stringLength] = letter;
+	    stringCopy += letter;
 	    stringLength++;
-	    copyString[stringLength] = 0;
-	    moveWrite(ypos, xpos, "%s", copyString);
+	    moveWrite(ypos, xpos, "%s", stringCopy);
 	  }
         }
       }
-#ifdef DOS
-    }
-#endif
   }
 
   if (letter != 27)
   {
-    sscanf(copyString, "%ld", number);
+    // String zu int konvertieren
+    stream.clear();
+    stream << stringCopy;
+    stream >> number;
   }
 
   hideCursor();
 
+  return number;
 }
-

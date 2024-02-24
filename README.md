@@ -119,34 +119,6 @@ von Morsezeichen (CW). Es kennt die Zeichen `a-z`, `0-9` und `.,=?/`.
 *Es tutet leis' der "Morsemann"*,<br>
 *bis man schneller hören kann*... (frei nach Loriot)
 
-# Start des Programmes
-
-Der *Morsemann* lässt sich unter DOS und
-Windows problemlos starten. Unter Linux muss
-folgendes beachtet werden: Da das Programm direkt auf
-die Hardware, bzw. im Fall des Speakers auf die Konsole,
-zugreift, benötigt man Root-Rechte um etwas zu hören.
-Also bitte vor dem Aufruf des *Morsemann*s in den Root-Modus
-wechseln mit:
-
-```
-su
-```
-
-Falls man nicht immer wieder `su` und das Passwort eingeben
-möchte, kann man für die Datei `morsemann`' auch
-das entsprechende Ausführungs-Bit setzen. Dazu wechselt man wie beschrieben
-in den Superuser-Modus und ruft:
-
-```
-make allusers
-```
-
-auf. Anschließend kann man den *Morsemann* als normaler Benutzer/User
-starten (er wird aber im Root-Modus ausgeführt)...
-
-Hinweise für das Kompilieren unter den verschiedenen Betriebssystemen
-findet man in der Datei `README.md`.
 
 ### Hauptfenster
 

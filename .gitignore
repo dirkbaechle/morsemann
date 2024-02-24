@@ -1,3 +1,5 @@
 old/**
 mmsound/*.o
 mmsound/*.a
+mmscreen/*.o
+mmscreen/*.a

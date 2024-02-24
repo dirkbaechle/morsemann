@@ -1,5 +1,4 @@
-# Makefile for/für ``MorseMann Soundlib v1.2''
-# by Dirk Bächle (dl9obn@darc.de), 27.05.2007
+# Makefile for/für ``MorseMann Screenlib''
 #
 # Available targets/Verfügbare ``Targets'':
 #   all, clean
@@ -17,9 +16,9 @@ RANLIB = ranlib
 # Ab dieser Zeile bitte nichts mehr ändern!!!
 #
 
-TARGET = mmsound
-AROBJS = beep.o alarm.o mmsound.o
-CINCLUDES = -DLINUXSIGS
+TARGET = mmscreen
+AROBJS = mmscreen.o
+CINCLUDES = -DLINUX
 
 all: lib$(TARGET).a
 	
@@ -30,9 +29,8 @@ lib$(TARGET).a: $(AROBJS)
 	$(RANLIB) lib$(TARGET).a
 
 %.o: %.cpp %.h
-	$(CC) $< -c -o $@ $(CINCLUDES)
+	$(CC) $< -c -I.. -o $@ $(CINCLUDES)
 
 clean:
 	rm -f lib$(TARGET).a
 	rm -f *.o
-

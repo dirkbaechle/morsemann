@@ -34,14 +34,6 @@ von Morsezeichen (CW).
 \date 2003-03-07
 */
 
-/* Benutzt conio.h usw. statt der */
-/* `ncurses' Funktionen, falls gesetzt. */
-/* #define DOS */
-
-/* Gibt die Umlaute in Textausgaben ASCII-codiert */
-/* aus, falls gesetzt. */
-/* #define ASCII */
-
 /* Benutzt keine Farben, sondern nur das */
 /* (hoffentlich) vom Terminal unterstützte ``Highlighting'' */
 /* #define NO_COLORS */
@@ -53,43 +45,28 @@ von Morsezeichen (CW).
 
 /*-------------------------------------------------------- Includes */
 
+#include "mmsound.h"
+#include "mmscreen.h"
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <map>
+#include <string>
 
-#include "mmsound.h"
-
-#ifdef DOS
-#include <time.h>
-#include <dos.h>
-#include <conio.h>
-#include <string.h>
-#else
 #include <string.h>
 #include <unistd.h>
 #include <ncurses.h>
 #include <time.h>
 #include <signal.h>
-#endif
+
+using std::map;
+using std::string;
 
 /*--------------------------------------------------------- Defines */
 
 /*-------------------------------------------------------- Typedefs */
 
-#ifdef DOS
-typedef char keyChar;
-#else
-typedef unsigned int keyChar;
-#endif
-
 /*---------------------------------------------------- Const values */
-
-#ifdef DOS
-const int KEY_UP = 72;
-const int KEY_DOWN = 80;
-const int KEY_LEFT = 75;
-const int KEY_RIGHT = 77;
-const int KEY_BACKSPACE = 8;
-#endif
 
 const int MM_TRUE = 1;
 const int MM_FALSE = 0;
@@ -135,111 +112,7 @@ char groupString[8][50] = {"Alle Zeichen",
 			   "Zahlen und Sonderzeichen",
 			   "Zeichen eingeben"};
 
-/** Aktuelle Breite des Windows */
-int screenX = 80;
-/** Aktuelle Höhe des Windows */
-int screenY = 25;
-/** Aktuelle Mitte des Windows in X-Richtung */
-int centerX = 40;
-/** Aktuelle Mitte des Windows in Y-Richtung */
-int centerY = 12;
-
 /*--------------------------------------------------- Functions */
-
-/** Schreibt den String \a string an die aktuelle
-Position auf dem Bildschirm.
-@param string String
-*/
-void writeString(char *string)
-{
-#ifdef DOS
-  cprintf("%s", string);
-#else
-  printw("%s", string);
-  refresh();
-#endif
-}
-
-/** Schreibt die Zahl \a number an die aktuelle
-Position auf dem Bildschirm.
-@param number Zahl
-*/
-void writeNumber(int number)
-{
-#ifdef DOS
-  cprintf("%d", number);
-#else
-  printw("%d", number);
-  refresh();
-#endif
-}
-
-/** Schreibt den Buchstaben \a b an die aktuelle
-Position auf dem Bildschirm.
-@param b Buchstabe
-*/
-void writeChar(char b)
-{
-#ifdef DOS
-  cprintf("%c", b);
-#else
-  addch(b);
-  refresh();
-#endif
-}
-
-#ifndef DOS
-/** Bewegt den Cursor an die Position \a xpos, \a ypos.
-@param xpos X-Koordinate
-@param ypos Y-Koordinate
-*/
-void gotoxy(int xpos, int ypos)
-{
-  move(ypos-1, xpos-1);
-}
-
-/** Löscht den aktuellen Bildschirm und ermittelt
-die neuen Bildschirmgrößen und -mitten.
-*/
-void clrscr()
-{
-  clear();
-  getmaxyx(stdscr, screenY, screenX);
-  centerX = screenX / 2;
-  centerY = screenY / 2;
-}
-
-/** Prüft ob ein Zeichen im Tastaturpuffer vorliegt.
-@return 0 falls kein Zeichen vorliegt, 1 sonst
-*/
-int kbhit(void)
-{   /* Ohne ``Delay'' */
-    static struct timeval tv = {0, 0};
-    fd_set rdfs;
-
-    /* Wurde eine Taste gedrückt? */
-    FD_ZERO (&rdfs);
-    FD_SET  (STDERR_FILENO, &rdfs);
-    if (select  (STDERR_FILENO + 1, &rdfs, NULL, NULL, &tv) <= 0)
-        return 0; /* Nein */
-    if (FD_ISSET (STDERR_FILENO, &rdfs))
-        return 1; /* Ja */
-    return 0;     /* Nein */
-}
-#endif
-
-/** Schreibt den String \a string im Format \a fmt
-an die Position \a xpos, \a ypos.
-*/
-void moveWrite(int ypos, int xpos, char *fmt, char *string)
-{
-#ifdef DOS
-  gotoxy(xpos, ypos);
-  cprintf(fmt, string);
-#else
-  mvprintw(ypos-1, xpos-1, fmt, string);
-#endif
-}
 
 /** Erzeugt einen Ton von der Länge eines Punktes.
 */
@@ -248,7 +121,6 @@ void dit(void)
   mmslPlayTone(dotLength);
   mmslPlayPause(dotLength);
 }
-
 
 /** Erzeugt einen Ton von der Länge eines Striches
 (= Drei Punkte).
@@ -273,77 +145,7 @@ void errorTone(void)
 */
 int mmRandom(int maxNumber)
 {
-#ifdef DOS
-  return ((int) (maxNumber*1.0*rand()/(RAND_MAX+1.0)));
-#else
   return ((int) (maxNumber*1.0*random()/(RAND_MAX+1.0)));
-#endif
-}
-
-/** Schaltet in den ``normalen'' Text-Modus, d.h.
-weisse Schrift auf schwarzem Grund.
-*/
-void textModusNormal(void)
-{
-#ifdef NO_COLORS
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
-#else
-  attroff(A_STANDOUT);
-#endif
-#else
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
-#else
-  attrset(COLOR_PAIR(7));
-#endif
-#endif
-}
-
-/** Schaltet in den Text-Modus für ``Auswahl'', d.h.
-weisse Schrift auf blauem Grund.
-*/
-void textModusSelect(void)
-{
-#ifdef NO_COLORS
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
-#else
-  attron(A_STANDOUT);
-#endif
-#else
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLUE);
-#else
-  attrset(COLOR_PAIR(5));
-#endif
-#endif
-}
-
-/** Schaltet in den Text-Modus für ``Fehler'', d.h.
-rote Schrift auf schwarzem Grund.
-*/
-void textModusError(void)
-{
-#ifdef NO_COLORS
-#ifdef DOS
-  textcolor(WHITE);
-  textbackground(BLACK);
-#else
-  attron(A_STANDOUT);
-#endif
-#else
-#ifdef DOS
-  textcolor(RED);
-  textbackground(BLACK);
-#else
-  attrset(COLOR_PAIR(1));
-#endif
-#endif
 }
 
 /** Gibt das Zeichen aus und fragt es vorher eventuell ab.
@@ -386,6 +188,12 @@ int writeSign(char b)
 
   return(MM_FALSE);
 }
+
+const std::map<int, string> cwCode = {{97, ".-"},
+{98, "-..."}};
+
+const std::map<int, char> cwChar = {{97, 'a'},
+{98, 'b'}};
 
 /** Gibt die Zeichen und den dazugehörigen Morse-Code aus.
 @param signID Das auszugebende Zeichen
@@ -438,40 +246,6 @@ int outputSign(int signID)
     case 61:dah();dit();dit();dit();dah();return(writeSign('='));
   }
   return(MM_FALSE);
-}
-
-/** Versteckt den Text-Cursor.
-*/
-void hideCursor(void)
-{
-#ifdef DOS
-  union REGS inregs;
-
-  inregs.h.ah=0x01;
-  inregs.h.ch=0xF0;
-  inregs.h.cl=0x02;
-
-  int86(0x10,&inregs,&inregs);
-#else
-  curs_set(0);
-#endif
-}
-
-/** Zeigt den Text-Cursor.
-*/
-void showCursor(void)
-{
-#ifdef DOS
-  union REGS inregs;
-
-  inregs.h.ah=0x01;
-  inregs.h.ch=0x06;
-  inregs.h.cl=0x07;
-
-  int86(0x10,&inregs,&inregs);
-#else
-  curs_set(1);
-#endif
 }
 
 /** Die Endnachricht.
@@ -568,162 +342,6 @@ char signRandom(void)
   return(0);
 }
 
-/** Schreibt einen String an die übergebene Position. Stimmt
-die Auswahl mit der ID des Strings überein wird dieser mit
-weisser Schrift auf blauem Grund dargestellt.
-@param string String
-@param xpos Position in x-Richtung
-@param ypos Position in y-Richtung
-@param stringID ID-Nummer des Strings
-@param selected Aktuelle Auswahl
-*/
-void writeSelection(char *string, int xpos, int ypos, 
-                    int stringID, int selected)
-{
-  if (stringID == selected)
-    textModusSelect();
-
-  moveWrite(ypos, xpos, "%s", string);
-
-  if (stringID == selected)
-    textModusNormal();
-}
-
-/** Liest einen String an der Position (xpos,ypos) mit maximal
-\a max Buchstaben linksbündig ein.
-@param xpos x-Koordinate
-@param ypos y-Koordinate
-@param max Maximale Anzahl der Buchstaben
-@param string Zeiger auf den String
-*/
-void readString(int xpos, int ypos, int max, char *string)
-{
-  keyChar letter = '0';
-  char stringCopy[255];
-  int stringLength = strlen(string);
-
-  showCursor();
-
-  strcpy(stringCopy, string);
-
-  moveWrite(ypos, xpos, "%s", stringCopy);
-
-  while ((letter != 27) && (letter != 13))
-  {
-    letter = getch();
-#ifdef DOS
-    if (letter == 0)
-    {
-      letter = getch();
-    }
-    else
-    {
-#endif
-
-      if (letter == KEY_BACKSPACE)
-      {
-	if (stringLength > 0)
-	{
-	  stringLength--;
-	  stringCopy[stringLength] = 0;
-          moveWrite(ypos, xpos, "%s ", stringCopy);
-          gotoxy(xpos+stringLength, ypos);
-	}
-      }
-      else
-      {
-        if (letter > 31)
-        {
-	  if (stringLength < max)
-	  {
-	    stringCopy[stringLength] = letter;
-	    stringLength++;
-	    stringCopy[stringLength] = 0;
-	    moveWrite(ypos, xpos, "%s", stringCopy);
-	  }
-        }
-      }
-#ifdef DOS
-    }
-#endif
-  }
-  if (letter != 27)
-  {
-    strcpy(string, stringCopy);
-  }
-
-  hideCursor();
-
-}
-
-/** Liest eine Nummer an der Position (xpos,ypos) mit maximal
-max Stellen linksbündig ein.
-@param xpos x-Koordinate
-@param ypos y-Koordinate
-@param max Maximale Anzahl der Stellen
-@param number Zeiger auf die Nummer
-*/
-void readNumber(int xpos, int ypos, int max, int *number)
-{
-  keyChar letter = '0';
-  char copyString[50];
-  int stringLength = 0;
-
-  showCursor();
-
-  sprintf(copyString, "%d", *number);
-  stringLength = strlen(copyString);
-
-  moveWrite(ypos, xpos, "%s", copyString);
-
-  while ((letter != 27) && (letter != 13))
-  {
-    letter = getch();
-#ifdef DOS
-    if (letter == 0)
-    {
-      letter = getch();
-    }
-    else
-    {
-#endif
-      if (letter == KEY_BACKSPACE)
-      {
-	if (stringLength > 0)
-	{
-	  stringLength--;
-	  copyString[stringLength] = 0;
-	  moveWrite(ypos, xpos, "%s ", copyString);
-          gotoxy(xpos+stringLength, ypos);
-	}
-      }
-      else
-      {
-        if ((letter > 47) && (letter < 58))
-        {
-	  if (stringLength < max)
-	  {
-	    copyString[stringLength] = letter;
-	    stringLength++;
-	    copyString[stringLength] = 0;
-	    moveWrite(ypos, xpos, "%s", copyString);
-	  }
-        }
-      }
-#ifdef DOS
-    }
-#endif
-  }
-
-  if (letter != 27)
-  {
-    sscanf(copyString, "%ld", number);
-  }
-
-  hideCursor();
-
-}
-
 /** Liest einen String als Zeichenmenge ein.
 */
 void readCharSet(void)
@@ -785,11 +403,6 @@ void charGroupSelection(void)
     charGroupMenu();
     b = getch();
 
-#ifdef DOS
-    if (b == 0)
-    {
-      b = getch();
-#endif
       /* Cursor hoch */
       if (b == KEY_UP)
       {
@@ -803,9 +416,6 @@ void charGroupSelection(void)
 	if (selectedCharGroup == 8) selectedCharGroup = 1;
 	else selectedCharGroup++;
       }
-#ifdef DOS
-    }
-#endif
   }
 
   if (selectedCharGroup == 8)
@@ -837,11 +447,6 @@ void speedSelection(void)
 
     b = getch();
 
-#ifdef DOS
-    if (b == 0)
-    {
-      b = getch();
-#endif
       /* Cursor hoch */
       if (b == KEY_UP)
       {
@@ -869,9 +474,6 @@ void speedSelection(void)
 	    bpm -= 5;
 	}
       }
-#ifdef DOS
-    }
-#endif
   }
 
   textModusNormal();
@@ -899,11 +501,6 @@ void delaySelection(void)
 
     b = getch();
 
-#ifdef DOS
-    if (b == 0)
-    {
-      b = getch();
-#endif
       /* Cursor hoch */
       if (b == KEY_UP)
       {
@@ -917,9 +514,6 @@ void delaySelection(void)
 	if (delayFactor == 1) delayFactor = 9;
 	else delayFactor--;
       }
-#ifdef DOS
-    }
-#endif
   }
 
   textModusNormal();
@@ -934,7 +528,7 @@ void lengthSelection(void)
   writeSelection("Gesamtanzahl der Buchstaben (mindestens 5!)",centerX-22,centerY-1,1,2);
   do
   {
-    readNumber(centerX-2, centerY+1, 4, &totalLength);
+    totalLength = readNumber(centerX-2, centerY+1, 4, totalLength);
   } while (totalLength < 5);
 }
 
@@ -951,11 +545,7 @@ void optionsMenu(int akt)
   writeSelection("Pausenfaktor:", centerX-OPT_LEFT_WIDTH, centerY, 3, akt);
   writeSelection("Zeichenanzahl:", centerX-OPT_LEFT_WIDTH, centerY+1, 4, akt);
   writeSelection("Feste Wortgruppen:", centerX-OPT_LEFT_WIDTH, centerY+2, 5, akt);
-#ifdef ASCII
-  writeSelection("Zeichen best�tigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
-#else
   writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
-#endif
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeString(groupString[selectedCharGroup - 1]);
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
@@ -1009,11 +599,6 @@ void optionsSelection(void)
     optionsMenu(currentOption);
     b = getch();
 
-#ifdef DOS
-    if (b == 0)
-    {
-      b = getch();
-#endif
       /* Cursor hoch */
       if (b == KEY_UP)
       {
@@ -1053,9 +638,6 @@ void optionsSelection(void)
         } 
       }
 
-#ifdef DOS
-    }
-#endif
     if (b == 13)
     {
       switch (currentOption)
@@ -1146,9 +728,7 @@ void outputMorseCode(void)
   keyChar b = '0';
 
   clrscr();
-#ifndef DOS
   refresh();
-#endif
   mmslPlayPause(1000);
 
   errorCount = 0;
@@ -1195,9 +775,6 @@ void outputMorseCode(void)
       if (kbhit() != 0)
       {
 	b = getch();
-#ifdef DOS
-	if (b == 0) b = getch();
-#endif
 	if (b == KEY_BACKSPACE) error = MM_TRUE;
       }
     } while ((charCount < wordLength) && (error == MM_FALSE));
@@ -1206,14 +783,9 @@ void outputMorseCode(void)
     {
       lastWord[charCount] = 0;
       userWord[0] = 0;
-#ifdef DOS
-      posX = wherex();
-      posY = wherey();
-#else
       getyx(stdscr, posY, posX);
       posX++;
       posY++;
-#endif
       readString(posX, posY, wordLength, userWord);
       gotoxy(posX, posY);
       errorCount += compareStrings(userWord, lastWord);
@@ -1262,17 +834,10 @@ void outputMorseCode(void)
     writeNumber(errorCount);
     writeString(" Fehler)");
   }
-#ifdef ASCII
-  writeSelection("<< Bitte eine Taste dr�cken >>", centerX-15, screenY, 1, 2);
-#else
   writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY, 1, 2);
-#endif
 
 
   b = getch();
-#ifdef DOS
-  if (b == 0) getch();
-#endif
 }
 
 /** Zeigt das Menü an.
@@ -1282,11 +847,7 @@ void mainMenu(int current)
 {
   clrscr(); 
   writeSelection("*** Der Morsemann v1.3 ***",centerX-13, centerY-3, 1, 2);
-#ifdef ASCII
-  writeSelection("by Dirk B�chle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
-#else
   writeSelection("by Dirk Bächle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
-#endif
 
   writeSelection("Start", centerX-MENU_WIDTH, centerY-1, 1, current);
   writeSelection("Optionen", centerX-MENU_WIDTH, centerY, 2, current);
@@ -1305,11 +866,6 @@ void mainSelection(void)
     mainMenu(currentSelection);
     b = getch();
 
-#ifdef DOS
-    if (b == 0)
-    {
-      b = getch();
-#endif
       /* Cursor hoch */
       if (b == KEY_UP)
       {
@@ -1323,9 +879,6 @@ void mainSelection(void)
 	if (currentSelection == 3) currentSelection = 1;
 	else currentSelection++;
       }
-#ifdef DOS
-    }
-#endif
     if (b == 13)
     {
       switch (currentSelection)
@@ -1343,7 +896,6 @@ void mainSelection(void)
 
 }
 
-#ifndef DOS
 /** Beendet den ``ncurses''-Modus.
 */
 static void finish(int sig)
@@ -1355,7 +907,6 @@ static void finish(int sig)
 
   exit(0);
 }
-#endif
 
 /** Das Hauptprogramm.
 */
@@ -1364,20 +915,20 @@ int main(void)
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
 
-#ifdef DOS
-  hideCursor();
-  textModusNormal();
+mmslSetFrequency(600);
 
-  clrscr();
-  randomize();
-  mainSelection();
-  confirmChars = 0;
-  textModusNormal();
-  byeMessage();
-  showCursor();
+mmslPlayTone(100);
 
-  clrscr();
-#else
+mmslPlayPause(2000);
+
+mmslPlayTone(100);
+
+mmslPlayPause(2000);
+
+mmslPlayTone(100);
+
+mmslPlayPause(2000);
+
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
   (void) initscr();      /* initialize the curses library */
@@ -1418,8 +969,8 @@ int main(void)
   byeMessage();
   showCursor();
 
+  mmslCloseSoundSystem();
   finish(0);               /* we're done */
-#endif /* of #ifdef DOS ... #else ... */
 
   return(0);
 }

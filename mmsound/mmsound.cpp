@@ -62,7 +62,6 @@ void playBufferAlsa(unsigned int duration)
     int nbSamples = rate * channels * ((float) duration / 1000.0);
     if (nbSamples >0) {
       // Sending the sound
-      snd_pcm_prepare(pcm_handle);
       snd_pcm_writei(pcm_handle, g_buffer, nbSamples);
       snd_pcm_drain(pcm_handle);
     }
@@ -88,7 +87,6 @@ bool mmslInitSoundSystem(int system, const std::string &device)
   switch (system)
   {
     case MMSL_SPEAKER:
-#ifndef DOS
       if (BeepInit () != 0)
       {
         cerr << "BeepInit: Can't access speaker!" << endl;
@@ -98,7 +96,6 @@ bool mmslInitSoundSystem(int system, const std::string &device)
 
       Beep(100, 0, 800);
       BeepWait();
-#endif
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
@@ -123,9 +120,7 @@ void mmslCloseSoundSystem()
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-#ifndef DOS
         BeepCleanup();
-#endif
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
@@ -187,13 +182,8 @@ void mmslPlayTone(unsigned int duration)
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-#ifdef DOS
-      sound(mmslFrequency);
-      delay((int) duration);
-#else
       Beep((int) duration, 10, mmslFrequency);
       BeepWait();
-#endif
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
@@ -213,13 +203,8 @@ void mmslPlayPause(unsigned int duration)
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-#ifdef DOS
-      nosound();
-      delay((int) duration);
-#else
       Beep((int) duration, 0, mmslFrequency);
       BeepWait();
-#endif
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
@@ -237,16 +222,6 @@ void mmslPlayErrorTone(unsigned int dotLength)
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-#ifdef DOS
-      sound(700);
-      delay((int) dotLength);
-      sound(600);
-      delay((int) dotLength);
-      sound(500);
-      delay((int) dotLength);
-      nosound();
-      delay((int) 3*dotLength);
-#else
       Beep(dotLength, 10, 700);
       BeepWait();
       Beep(dotLength, 10, 600);
@@ -255,7 +230,6 @@ void mmslPlayErrorTone(unsigned int dotLength)
       BeepWait();
       Beep(dotLength*3, 0, 500);
       BeepWait();
-#endif
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
