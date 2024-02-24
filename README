@@ -1,7 +1,7 @@
-Morsemann - Ein Programm f"ur das Lernen und "Uben des H"orens
+Morsemann - Ein Programm für das Lernen und Üben des Hörens
             von Morsezeichen (CW)
 
-Copyright (C) 2003 by Dirk B"achle (dl9obn@darc.de)
+Copyright (C) 2003-2024 by Dirk Bächle (dl9obn@darc.de)
 
 http://www.darc.de/distrikte/h/43/programme/morsemann
 
@@ -48,27 +48,27 @@ Geben Sie das Kommando
   make
 
 ein. Nach kurzer Zeit sollte der Kompilier-Vorgang stoppen und eine
-ausf"uhrbare Datei namens `morsemann' erzeugt haben. Denken Sie bitte
+ausführbare Datei namens `morsemann' erzeugt haben. Denken Sie bitte
 daran, dass sie Root-Rechte brauchen um den ``Morsemann'' zu starten
-(nicht f"ur das Kompilieren!).
+(nicht für das Kompilieren!).
 Wechseln Sie also vor dem Start des Programmes mit
 
   su
 
 in den Superuser-Modus. 
 Falls man nicht immer wieder `su' und das Passwort eingeben
-m"ochte, kann man f"ur die Datei `morsemann' auch das entsprechende
-Ausf"uhrungs-Bit setzen. Dazu wechselt man in den Superuser-Modus und
+möchte, kann man für die Datei `morsemann' auch das entsprechende
+Ausführungs-Bit setzen. Dazu wechselt man in den Superuser-Modus und
 ruft:
 
   make allusers
 
 auf. Anschliessend kann man den ``Morsemann'' als normaler Benutzer/User
-starten (er wird aber im Root-Modus ausgef"uhrt)...
+starten (er wird aber im Root-Modus ausgeführt)...
 
 
-Beschwert sich `make' dar"uber, dass es den Kompiler `gcc' nicht finden
-konnte, so haben Sie zwei M"oglichkeiten: 
+Beschwert sich `make' darüber, dass es den Kompiler `gcc' nicht finden
+konnte, so haben Sie zwei Möglichkeiten: 
 
   a.) Den `gcc' installieren.
   b.) Sie editieren das `Makefile' und setzen die Variable `CC' auf den
@@ -78,8 +78,8 @@ konnte, so haben Sie zwei M"oglichkeiten:
 Falls der Linker die Library `ncurses' nicht finden kann, so haben Sie
 diese wahrscheinlich nicht installiert. Erneut haben Sie zwei Optionen:
 
-  a.) `ncurses' nachtr"aglich installieren. Sollte diese nicht in
-      Ihrer Linux-Distribution enthalten sein, k"onnen Sie sie von
+  a.) `ncurses' nachträglich installieren. Sollte diese nicht in
+      Ihrer Linux-Distribution enthalten sein, können Sie sie von
 
         ftp://ftp.gnu.org/pub/gnu/ncurses/ncurses.tar.gz
 
@@ -96,11 +96,11 @@ diese wahrscheinlich nicht installiert. Erneut haben Sie zwei Optionen:
 1.2 DOS/Windows
 ---------------
 
-F"ur das Kompilieren unter DOS/Windows ben"otigt man nur die Datei
-`morsemann.c'. Alle anderen `*.c'- und `*.h'-Dateien dienen dem
+Für das Kompilieren unter DOS/Windows benötigt man nur die Datei
+`morsemann.c`. Alle anderen `*.c`- und `*.h`-Dateien dienen dem
 Ansteuern des PC-Speakers unter Linux!
 
-Es reicht also die Datei `morsemann.c' in den von Ihnen verwendeten
+Es reicht also die Datei `morsemann.c` in den von Ihnen verwendeten
 Kompiler zu laden (z.B. ``TurboC'' oder ``MSVC'') und zu kompilieren.
 Vorher muss jedoch das ``Define'' namens ``DOS'' gesetzt werden,
 (auch beim Kompilieren unter Windows!).
@@ -110,7 +110,7 @@ Entfernen Sie dazu die Kommentare um die Anweisung
   #define DOS
 
 am Anfang der Quelldatei `morsemann.c'. Beim Kompilieren unter
-DOS sollte zus"atzlich das ``Define''
+DOS sollte zusätzlich das ``Define''
 
   #define ASCII
 
@@ -130,11 +130,11 @@ werden. Lesen Sie bitte zu diesem Zweck die Anleitung von "Doxygen".
 ----------
 
 Die Dateien `beep.h', `beepLinux.c' und `alarm.[ch]' wurden 
-unver"andert dem Programm `morse' von Joe Dellinger entnommen. 
-Jeglicher Dank, daf"ur dass man unter Linux die Morsezeichen auch
-h"ort und nicht nur sieht, geb"uhrt daher Joe Dellinger,
+unverändert dem Programm `morse' von Joe Dellinger entnommen. 
+Jeglicher Dank, dafür dass man unter Linux die Morsezeichen auch
+hört und nicht nur sieht, gebührt daher Joe Dellinger,
 Scott Seligman und John Paul Morrison.
 
 
-Dirk B"achle, 2003-03-07
+Dirk Bächle, 2003-03-07
 

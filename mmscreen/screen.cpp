@@ -8,7 +8,7 @@
 /* #define ASCII */
 
 /* Benutzt keine Farben, sondern nur das */
-/* (hoffentlich) vom Terminal unterst"utzte ``Highlighting'' */
+/* (hoffentlich) vom Terminal unterstützte ``Highlighting'' */
 /* #define NO_COLORS */
 
 /*-------------------------------------------------------- Includes */
@@ -58,7 +58,7 @@ const int MENU_WIDTH = 4;
 
 /** Aktuelle Breite des Windows */
 int screenX = 80;
-/** Aktuelle H"ohe des Windows */
+/** Aktuelle Höhe des Windows */
 int screenY = 25;
 /** Aktuelle Mitte des Windows in X-Richtung */
 int centerX = 40;
@@ -119,8 +119,8 @@ void gotoxy(int xpos, int ypos)
   move(ypos-1, xpos-1);
 }
 
-/** L"oscht den aktuellen Bildschirm und ermittelt
-die neuen Bildschirmgr"o"sen und -mitten.
+/** Löscht den aktuellen Bildschirm und ermittelt
+die neuen Bildschirmgrößen und -mitten.
 */
 void clrscr()
 {
@@ -130,7 +130,7 @@ void clrscr()
   centerY = screenY / 2;
 }
 
-/** Pr"uft ob ein Zeichen im Tastaturpuffer vorliegt.
+/** Prüft ob ein Zeichen im Tastaturpuffer vorliegt.
 @return 0 falls kein Zeichen vorliegt, 1 sonst
 */
 int kbhit(void)
@@ -138,7 +138,7 @@ int kbhit(void)
     static struct timeval tv = {0, 0};
     fd_set rdfs;
 
-    /* Wurde eine Taste gedr"uckt? */
+    /* Wurde eine Taste gedrückt? */
     FD_ZERO (&rdfs);
     FD_SET  (STDERR_FILENO, &rdfs);
     if (select  (STDERR_FILENO + 1, &rdfs, NULL, NULL, &tv) <= 0)
@@ -184,8 +184,8 @@ void textModusNormal(void)
 #endif
 }
 
-/** Schaltet in den Text-Modus f"ur ``Auswahl'', d.h.
-weisse Schrift auf blauem Grund.
+/** Schaltet in den Text-Modus für ``Auswahl'', d.h.
+weiße Schrift auf blauem Grund.
 */
 void textModusSelect(void)
 {
@@ -206,7 +206,7 @@ void textModusSelect(void)
 #endif
 }
 
-/** Schaltet in den Text-Modus f"ur ``Fehler'', d.h.
+/** Schaltet in den Text-Modus für ``Fehler'', d.h.
 rote Schrift auf schwarzem Grund.
 */
 void textModusError(void)
@@ -262,8 +262,8 @@ void showCursor(void)
 #endif
 }
 
-/** Schreibt einen String an die "ubergebene Position. Stimmt
-die Auswahl mit der ID des Strings "uberein wird dieser mit
+/** Schreibt einen String an die übergebene Position. Stimmt
+die Auswahl mit der ID des Strings überein wird dieser mit
 weisser Schrift auf blauem Grund dargestellt.
 @param string String
 @param xpos Position in x-Richtung
@@ -284,7 +284,7 @@ void writeSelection(char *string, int xpos, int ypos,
 }
 
 /** Liest einen String an der Position (xpos,ypos) mit maximal
-\a max Buchstaben linksb"undig ein.
+\a max Buchstaben linksbündig ein.
 @param xpos x-Koordinate
 @param ypos y-Koordinate
 @param max Maximale Anzahl der Buchstaben
@@ -351,7 +351,7 @@ void readString(int xpos, int ypos, int max, char *string)
 }
 
 /** Liest eine Nummer an der Position (xpos,ypos) mit maximal
-max Stellen linksb"undig ein.
+max Stellen linksbündig ein.
 @param xpos x-Koordinate
 @param ypos y-Koordinate
 @param max Maximale Anzahl der Stellen

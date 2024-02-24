@@ -1,8 +1,11 @@
 # Makefile for/für ``Morsemann v2.0''
-# by Dirk B"achle (dl9obn@darc.de), 10.08.2008
+# by Dirk Bächle (dl9obn@darc.de), 10.08.2008
 #
 # Available targets/Verfügbare ``Targets'':
 #   all, allusers, clean, clean-dist
+#
+# Prerequisites for compiling:
+#   make, ncurses-dev, libasound2-dev
 #
 
 # Your favourite C++ compiler/Ihr C++-Kompiler
@@ -16,10 +19,8 @@ CURSESLIB = -lncurses
 # properly support colors...
 # CXXFLAGS += -DNO_COLORS
 
-SOUNDLIBS =
-
 CXXFLAGS += -DHAVE_ALSA
-SOUNDLIBS += -lasound
+SOUNDLIBS = -lasound
 
 #
 # You shouldn't have to edit something below here!!!

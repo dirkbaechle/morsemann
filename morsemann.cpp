@@ -1,5 +1,5 @@
-/* Morsemann - Ein kleines Programm zum Lernen und �ben des
-*              H�rens von Morsezeichen (CW).
+/* Morsemann - Ein kleines Programm zum Lernen und �ben des
+*              H�rens von Morsezeichen (CW).
 *
 * Copyright (C) 2003 by Dirk Baechle (dl9obn@darc.de)
 *
@@ -27,9 +27,9 @@
 */
 
 /** \file morsemann.c
-Der ``Morsemann''. Ein kleines Programm zum Lernen und "Uben des H"orens
+Der ``Morsemann''. Ein kleines Programm zum Lernen und Üben des Hörens
 von Morsezeichen (CW).
-\author Dirk B"achle
+\author Dirk Bächle
 \version 1.1
 \date 2003-03-07
 */
@@ -43,11 +43,11 @@ von Morsezeichen (CW).
 /* #define ASCII */
 
 /* Benutzt keine Farben, sondern nur das */
-/* (hoffentlich) vom Terminal unterst"utzte ``Highlighting'' */
+/* (hoffentlich) vom Terminal unterstützte ``Highlighting'' */
 /* #define NO_COLORS */
 
 /* Falls gesetzt, wird fortlaufend das Standardwort */
-/* `paris' erzeugt. Dient der "Uberpr"ufung der */
+/* `paris' erzeugt. Dient der Überprüfung der */
 /* Geschwindigkeitsangaben. */
 /* #define CALIBRATE_MODE */
 
@@ -101,9 +101,9 @@ const int MENU_WIDTH = 4;
 
 /*------------------------------------------------ Global variables */
 
-/** Tonh"ohe */
+/** Tonhöhe */
 int tone;
-/** L"ange eines Punktes in Millisekunden */
+/** Länge eines Punktes in Millisekunden */
 int dotLength = 100;
 /** Geschwindigkeit in Buchstaben pro Minute (bpm) */
 int bpm = 60;
@@ -113,9 +113,9 @@ int delayFactor = 1;
 int selectedCharGroup = 1;
 /** Art der Wortgruppen (fest=MM_FALSE oder variabel=MM_TRUE) */
 int variableWords = 0;
-/** L"ange der festen Wortgruppen */
+/** Länge der festen Wortgruppen */
 int fixedWordLength = 5;
-/** Best"atigung jedes einzelnen Zeichens? (0=nein, 1=Buchstabe, 2=Wort) */
+/** Bestätigung jedes einzelnen Zeichens? (0=nein, 1=Buchstabe, 2=Wort) */
 int confirmChars = 0;
 /** Gesamtzahl der zu gebenden Buchstaben */
 int totalLength = 200;
@@ -123,9 +123,9 @@ int totalLength = 200;
 int errorCount = 0;
 /** Zeichenmenge als String (Auswahl = 8) */
 char charSet[255];
-/** L"ange des Zeichenmenge-Strings */
+/** Länge des Zeichenmenge-Strings */
 int charSetLength = 0;
-/** Array mit den Strings f"ur die Zeichenauswahl */
+/** Array mit den Strings für die Zeichenauswahl */
 char groupString[8][50] = {"Alle Zeichen",
 			   "Nur Buchstaben",
 			   "Nur Zahlen",
@@ -137,7 +137,7 @@ char groupString[8][50] = {"Alle Zeichen",
 
 /** Aktuelle Breite des Windows */
 int screenX = 80;
-/** Aktuelle H"ohe des Windows */
+/** Aktuelle Höhe des Windows */
 int screenY = 25;
 /** Aktuelle Mitte des Windows in X-Richtung */
 int centerX = 40;
@@ -198,8 +198,8 @@ void gotoxy(int xpos, int ypos)
   move(ypos-1, xpos-1);
 }
 
-/** L"oscht den aktuellen Bildschirm und ermittelt
-die neuen Bildschirmgr"o"sen und -mitten.
+/** Löscht den aktuellen Bildschirm und ermittelt
+die neuen Bildschirmgrößen und -mitten.
 */
 void clrscr()
 {
@@ -209,7 +209,7 @@ void clrscr()
   centerY = screenY / 2;
 }
 
-/** Pr"uft ob ein Zeichen im Tastaturpuffer vorliegt.
+/** Prüft ob ein Zeichen im Tastaturpuffer vorliegt.
 @return 0 falls kein Zeichen vorliegt, 1 sonst
 */
 int kbhit(void)
@@ -217,7 +217,7 @@ int kbhit(void)
     static struct timeval tv = {0, 0};
     fd_set rdfs;
 
-    /* Wurde eine Taste gedr"uckt? */
+    /* Wurde eine Taste gedrückt? */
     FD_ZERO (&rdfs);
     FD_SET  (STDERR_FILENO, &rdfs);
     if (select  (STDERR_FILENO + 1, &rdfs, NULL, NULL, &tv) <= 0)
@@ -241,7 +241,7 @@ void moveWrite(int ypos, int xpos, char *fmt, char *string)
 #endif
 }
 
-/** Erzeugt einen Ton von der L"ange eines Punktes.
+/** Erzeugt einen Ton von der Länge eines Punktes.
 */
 void dit(void)
 {
@@ -250,7 +250,7 @@ void dit(void)
 }
 
 
-/** Erzeugt einen Ton von der L"ange eines Striches
+/** Erzeugt einen Ton von der Länge eines Striches
 (= Drei Punkte).
 */
 void dah(void)
@@ -268,7 +268,7 @@ void errorTone(void)
 
 /** Erzeugt eine Zufallszahl im Bereich von 0 bis \a maxNumber minus
 1.
-@param maxNumber Anzahl der m"oglichen Zufallszahlen
+@param maxNumber Anzahl der möglichen Zufallszahlen
 @return Die Zufallszahl
 */
 int mmRandom(int maxNumber)
@@ -302,7 +302,7 @@ void textModusNormal(void)
 #endif
 }
 
-/** Schaltet in den Text-Modus f"ur ``Auswahl'', d.h.
+/** Schaltet in den Text-Modus für ``Auswahl'', d.h.
 weisse Schrift auf blauem Grund.
 */
 void textModusSelect(void)
@@ -324,7 +324,7 @@ void textModusSelect(void)
 #endif
 }
 
-/** Schaltet in den Text-Modus f"ur ``Fehler'', d.h.
+/** Schaltet in den Text-Modus für ``Fehler'', d.h.
 rote Schrift auf schwarzem Grund.
 */
 void textModusError(void)
@@ -380,14 +380,14 @@ int writeSign(char b)
     /* Keine Abfrage? */
     if (confirmChars == 0)
       writeChar(b);
-    /* Bei Abfrage von ganzen W"ortern (confirmChars == 2) werden die */
+    /* Bei Abfrage von ganzen Wörtern (confirmChars == 2) werden die */
     /* Buchstaben zusammen in `outputMorseCode' ausgegeben... */
   }
 
   return(MM_FALSE);
 }
 
-/** Gibt die Zeichen und den dazugeh"origen Morse-Code aus.
+/** Gibt die Zeichen und den dazugehörigen Morse-Code aus.
 @param signID Das auszugebende Zeichen
 @return 1 wenn durch ESC abgebrochen, 0 sonst
 */
@@ -508,7 +508,7 @@ void byeMessage(void)
   mmslPlayPause(500);
 }
 
-/** Ermittelt den zugeh"origen ANSI/ASCII-Kode des Zeichens mit
+/** Ermittelt den zugehörigen ANSI/ASCII-Kode des Zeichens mit
 der ID \a letterID.
 @param letterID ID des Zeichens
 @return ANSI/ASCII-Kode des Zeichens
@@ -533,7 +533,7 @@ char mapToChar(int letterID)
   return(0);
 }
 
-/** Bestimmt durch Zufall das n"achste Zeichen aus dem eingegebenen String.
+/** Bestimmt durch Zufall das nächste Zeichen aus dem eingegebenen String.
 @return Zeichen
 */
 char charSetRandom(void)
@@ -541,7 +541,7 @@ char charSetRandom(void)
   return charSet[mmRandom(charSetLength)];
 }
 
-/** Bestimmt durch Zufall das n"achste Zeichen.
+/** Bestimmt durch Zufall das nächste Zeichen.
 @return Zeichen
 */
 char signRandom(void)
@@ -568,8 +568,8 @@ char signRandom(void)
   return(0);
 }
 
-/** Schreibt einen String an die "ubergebene Position. Stimmt
-die Auswahl mit der ID des Strings "uberein wird dieser mit
+/** Schreibt einen String an die übergebene Position. Stimmt
+die Auswahl mit der ID des Strings überein wird dieser mit
 weisser Schrift auf blauem Grund dargestellt.
 @param string String
 @param xpos Position in x-Richtung
@@ -590,7 +590,7 @@ void writeSelection(char *string, int xpos, int ypos,
 }
 
 /** Liest einen String an der Position (xpos,ypos) mit maximal
-\a max Buchstaben linksb"undig ein.
+\a max Buchstaben linksbündig ein.
 @param xpos x-Koordinate
 @param ypos y-Koordinate
 @param max Maximale Anzahl der Buchstaben
@@ -657,7 +657,7 @@ void readString(int xpos, int ypos, int max, char *string)
 }
 
 /** Liest eine Nummer an der Position (xpos,ypos) mit maximal
-max Stellen linksb"undig ein.
+max Stellen linksbündig ein.
 @param xpos x-Koordinate
 @param ypos y-Koordinate
 @param max Maximale Anzahl der Stellen
@@ -952,9 +952,9 @@ void optionsMenu(int akt)
   writeSelection("Zeichenanzahl:", centerX-OPT_LEFT_WIDTH, centerY+1, 4, akt);
   writeSelection("Feste Wortgruppen:", centerX-OPT_LEFT_WIDTH, centerY+2, 5, akt);
 #ifdef ASCII
-  writeSelection("Zeichen best�tigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
+  writeSelection("Zeichen best�tigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
 #else
-  writeSelection("Zeichen best�tigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
+  writeSelection("Zeichen best�tigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
 #endif
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeString(groupString[selectedCharGroup - 1]);
@@ -984,7 +984,7 @@ void optionsMenu(int akt)
             break;
   }
 
-  /* Zeichenmenge anzeigen, falls Option "Zeichen eingeben" gew�hlt */
+  /* Zeichenmenge anzeigen, falls Option "Zeichen eingeben" gewählt */
   if (selectedCharGroup == 8)
   {
     writeSelection("Zeichenmenge:", centerX-6, centerY+5, 1, 2);
@@ -997,7 +997,7 @@ void optionsMenu(int akt)
 }
 
 
-/** Auswahl f"ur die Optionen.
+/** Auswahl für die Optionen.
 */
 void optionsSelection(void)
 {
@@ -1082,7 +1082,7 @@ void optionsSelection(void)
 
 /** Vergleicht die beiden Strings, gibt das richtige Wort
 \a lastWord aus und liefert die Anzahl der gemachten Fehler
-zur"uck.
+zurück.
 @param userWord Eingabe des Benutzers
 @param lastWord Das richtige Wort
 @return Anzahl der gemachten Fehler
@@ -1108,7 +1108,7 @@ int compareStrings(char *userWord, char *lastWord)
     pos++;
   }
 
-  /* Sind noch Zeichen "ubrig? */
+  /* Sind noch Zeichen übrig? */
   if (lastWord[pos] != 0)
   {
     textModusError();
@@ -1263,9 +1263,9 @@ void outputMorseCode(void)
     writeString(" Fehler)");
   }
 #ifdef ASCII
-  writeSelection("<< Bitte eine Taste dr�cken >>", centerX-15, screenY, 1, 2);
+  writeSelection("<< Bitte eine Taste dr�cken >>", centerX-15, screenY, 1, 2);
 #else
-  writeSelection("<< Bitte eine Taste dr�cken >>", centerX-15, screenY, 1, 2);
+  writeSelection("<< Bitte eine Taste dr�cken >>", centerX-15, screenY, 1, 2);
 #endif
 
 
@@ -1275,7 +1275,7 @@ void outputMorseCode(void)
 #endif
 }
 
-/** Zeigt das Men"u an.
+/** Zeigt das Menü an.
 @param current Aktuelle Auswahl
 */
 void mainMenu(int current)
@@ -1283,9 +1283,9 @@ void mainMenu(int current)
   clrscr(); 
   writeSelection("*** Der Morsemann v1.1 ***",centerX-13, centerY-3, 1, 2);
 #ifdef ASCII
-  writeSelection("by Dirk B�chle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
+  writeSelection("by Dirk B�chle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
 #else
-  writeSelection("by Dirk B�chle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
+  writeSelection("by Dirk Bächle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
 #endif
 
   writeSelection("Start", centerX-MENU_WIDTH, centerY-1, 1, current);
@@ -1293,7 +1293,7 @@ void mainMenu(int current)
   writeSelection("Beenden", centerX-MENU_WIDTH, centerY+1, 3, current);
 }
 
-/** Das Hauptmen"u
+/** Das Hauptmenü
 */
 void mainSelection(void)
 {
@@ -1350,7 +1350,7 @@ static void finish(int sig)
 {
   endwin();
 
-  /* ``Non-curses'' Funktionen aufr"aumen */
+  /* ``Non-curses'' Funktionen aufräumen */
   mmslCloseSoundSystem();
 
   exit(0);
