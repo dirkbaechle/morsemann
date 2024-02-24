@@ -1,5 +1,0 @@
-#!/bin/sh
-
-cat $1 | sed -f body.sed > tmp.dat;
-cp tmp.dat $1;
-
