@@ -1,5 +1,5 @@
-/* Morsemann - Ein kleines Programm zum Lernen und �ben des
-*              H�rens von Morsezeichen (CW).
+/* Morsemann - Ein kleines Programm zum Lernen und Üben des
+*              Hörens von Morsezeichen (CW).
 *
 * Copyright (C) 2003 by Dirk Baechle (dl9obn@darc.de)
 *
@@ -954,7 +954,7 @@ void optionsMenu(int akt)
 #ifdef ASCII
   writeSelection("Zeichen best�tigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
 #else
-  writeSelection("Zeichen best�tigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
+  writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
 #endif
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeString(groupString[selectedCharGroup - 1]);
@@ -1265,7 +1265,7 @@ void outputMorseCode(void)
 #ifdef ASCII
   writeSelection("<< Bitte eine Taste dr�cken >>", centerX-15, screenY, 1, 2);
 #else
-  writeSelection("<< Bitte eine Taste dr�cken >>", centerX-15, screenY, 1, 2);
+  writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY, 1, 2);
 #endif
 
 
@@ -1281,7 +1281,7 @@ void outputMorseCode(void)
 void mainMenu(int current)
 {
   clrscr(); 
-  writeSelection("*** Der Morsemann v1.1 ***",centerX-13, centerY-3, 1, 2);
+  writeSelection("*** Der Morsemann v1.3 ***",centerX-13, centerY-3, 1, 2);
 #ifdef ASCII
   writeSelection("by Dirk B�chle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
 #else
@@ -1361,7 +1361,7 @@ static void finish(int sig)
 */
 int main(void)
 {
-  if (0 != mmslInitSoundSystem(MMSL_SPEAKER))
+  if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
 
 #ifdef DOS

@@ -9,7 +9,7 @@
 #define MMSL_ALSA    2
 #define MMSL_OSS     3
 
-extern bool mmslInitSoundSystem(int system, const std::string &device="");
+extern bool mmslInitSoundSystem(int system, const std::string &device="default");
 extern void mmslCloseSoundSystem();
 
 extern bool mmslSoundSystemAvailable(int system);

@@ -29,7 +29,7 @@ SOUNDLIBS = -lasound
 
 TARGET = morsemann
 CINCLUDES = -I./mmsound
-CLIBS = $(CURSESLIB) $(SOUNDLIBS) -L./mmsound -lmmsound
+CLIBS = $(CURSESLIB) -L./mmsound -lmmsound $(SOUNDLIBS)
 
 export CXXFLAGS
 

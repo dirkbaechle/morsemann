@@ -17,32 +17,64 @@ static int mmslAttack = 0;
 static int mmslSystem = MMSL_NONE;
 
 #ifdef HAVE_ALSA
-/// Requested sample rate
-static int pcm_rate = 44100;
-/// Sample rate actually used/supported
-static unsigned int pcm_exact_rate;
-/// Number of channels (1=mono, 2=stereo)
-static int pcm_channels = 2;
-/// Handle to the ALSA sound device
-static snd_pcm_t *pcm_handle = NULL;
-/// Pointer to the hardware param struct
-static snd_pcm_hw_params_t *pcm_params = NULL;
-/// Number of frames for the sound device
-static snd_pcm_uframes_t pcm_frames = 0;
-/// Number of periods
-static int pcm_periods = 2;
-/// Size of the period
-static snd_pcm_uframes_t pcm_periodsize = 4096;
+// Length of our complete buffer
+#define BUF_LEN 8 * 48000
+// Buffer for output to Alsa
+float g_buffer[BUF_LEN];
+// Our output device
+snd_pcm_t *pcm_handle;
+int channels =1;
+snd_pcm_format_t format = SND_PCM_FORMAT_FLOAT;
+int rate = 48000;
 
-/// Size of the replay window that we move over our sine buffer
-static int pcm_replay_buffersize = 2;
-/// Size of the PCM buffer, where the actual sine/pause tone is stored
-static long int pcm_buffersize = 32000;
+bool initAlsa(const std::string& device)
+{
+      string pcm_device(device);
+      if (pcm_device.empty())
+      {
+        pcm_device = "default";
+      }
 
-/// Pointer to the sine sound array
-unsigned char *pcm_sound;
-/// Pointer to the pause sound array
-unsigned char *pcm_pause;
+   int err;
+
+    if ((err = snd_pcm_open(&pcm_handle, pcm_device.c_str(), SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+      cerr << "Playback open error: " <<  snd_strerror(err) << endl;
+      return false;
+    }
+
+    if ((err = snd_pcm_set_params(pcm_handle,
+        format,
+        // SND_PCM_FORMAT_S16_LE,
+        SND_PCM_ACCESS_RW_INTERLEAVED,
+        channels,
+        // BUF_LEN,
+        rate,
+        1, /* period */
+        500000)) < 0) {	 /* latency: 0.5sec */ 
+      cerr << "Playback open error: " << snd_strerror(err) << endl;
+      return false;
+    }
+    return true;
+}
+
+void playBufferAlsa(unsigned int duration)
+{
+    int nbSamples = rate * channels * ((float) duration / 1000.0);
+    if (nbSamples >0) {
+      // Sending the sound
+      snd_pcm_prepare(pcm_handle);
+      snd_pcm_writei(pcm_handle, g_buffer, nbSamples);
+      snd_pcm_drain(pcm_handle);
+    }
+}
+
+void renderFrequencyToBuffer(int frequency)
+{
+    float t = 2*M_PI*frequency/(rate*channels);
+    for (int i=0; i< BUF_LEN; ++i) {
+        g_buffer[i] = sin(t*i);
+    }
+}
 
 #endif
 
@@ -62,6 +94,7 @@ bool mmslInitSoundSystem(int system, const std::string &device)
         cerr << "BeepInit: Can't access speaker!" << endl;
         return false;
       }
+      mmslSystem = MMSL_SPEAKER;
 
       Beep(100, 0, 800);
       BeepWait();
@@ -69,85 +102,14 @@ bool mmslInitSoundSystem(int system, const std::string &device)
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
-      string pcm_device(device);
-      if (pcm_device.empty())
+      if (initAlsa(device))
       {
-        pcm_device = "default";
+        mmslSystem = MMSL_ALSA;
+        return true;  
       }
-      /* Open the PCM device in playback mode */
-      if (pcm = snd_pcm_open(&pcm_handle, pcm_device.c_str(),
-              SND_PCM_STREAM_PLAYBACK, 0) < 0)
-      {
-        cerr << "ERROR: Can't open '" << pcm_device << "' PCM device. ";
-        cerr << snd_strerror(pcm) << endl;
-        return false;
-      }
-      /* Allocate parameters object and fill it with default values*/
-      snd_pcm_hw_params_alloca(&pcm_params);
-
-      snd_pcm_hw_params_any(pcm_handle, pcm_params);
-
-      /* Set parameters */
-      if (pcm = snd_pcm_hw_params_set_access(pcm_handle, pcm_params,
-              SND_PCM_ACCESS_RW_INTERLEAVED) < 0)
-        cerr << "ERROR: Can't set interleaved mode. " << snd_strerror(pcm) << endl;
-
-      if (pcm = snd_pcm_hw_params_set_format(pcm_handle, pcm_params,
-                SND_PCM_FORMAT_S16_LE) < 0)
-        cerr << "ERROR: Can't set format. " << snd_strerror(pcm) << endl;
-
-      if (pcm = snd_pcm_hw_params_set_channels(pcm_handle, pcm_params, pcm_channels) < 0)
-        cerr << "ERROR: Can't set channels number." << snd_strerror(pcm) << endl;
-
-      if (pcm = snd_pcm_hw_params_set_rate_near(pcm_handle, pcm_params, &pcm_rate, 0) < 0)
-        cerr << "ERROR: Can't set rate. " << snd_strerror(pcm) << endl;
-
-      /* Write parameters */
-      if (pcm = snd_pcm_hw_params(pcm_handle, pcm_params) < 0)
-        cerr << "ERROR: Can't set hardware parameters. " << snd_strerror(pcm) << endl;
-
-      /* Read out parameters */
-      snd_pcm_hw_params_get_channels(pcm_params, &pcm_channels);
-      snd_pcm_hw_params_get_rate(pcm_params, &pcm_rate, 0);
-
-      /* Allocate buffer to hold single period */
-      snd_pcm_hw_params_get_period_size(pcm_params, &pcm_frames, 0);
-      snd_pcm_hw_params_get_period_size_min(pcm_params, &pcm_min_frames, NULL);
-
-      /// TODO: optimize frame number in range [pcm_min_frames; pcm_frames]
-      pcm_replay_buffersize = pcm_frames * pcm_channels * 2 /* 2 -> sample size */;
-      pcm_sound = (unsigned char *) malloc(pcm_buffersize);
-      pcm_pause = (unsigned char *) malloc(pcm_buffersize);
-
-      snd_pcm_hw_params_get_period_time(params, &pcm_period_time, NULL);
-
-      for (loops = (dotLength * 1000) / pcm_period_time; loops > 0; loops--) {
-
-        if (pcm = read(0, buff, pcm_replay_buffersize) == 0) {
-          printf("Early end of file.\n");
-          return 0;
-        }
-
-        if (pcm = snd_pcm_writei(pcm_handle, buff, frames) == -EPIPE) {
-          printf("XRUN.\n");
-          snd_pcm_prepare(pcm_handle);
-        } else if (pcm < 0) {
-          printf("ERROR. Can't write to PCM device. %s\n", snd_strerror(pcm));
-        }
-
-      }
-
-      snd_pcm_drain(pcm_handle);
-      snd_pcm_close(pcm_handle);
-      free(buff);
-
-
-
-
-#else
+#endif
       cerr << "mmslInitSoundSystem: ALSA support is not available!" << endl;
       return false;
-#endif
       break;
     default:
       break;
@@ -172,16 +134,6 @@ void mmslCloseSoundSystem()
         snd_pcm_drain(pcm_handle);
         snd_pcm_close(pcm_handle);
         pcm_handle = NULL;
-      }
-      if (pcm_sound)
-      {
-        free(pcm_sound);
-        pcm_sound = NULL;
-      }
-      if (pcm_pause)
-      {
-        free(pcm_pause);
-        pcm_pause = NULL;
       }
 #endif
       break;
@@ -221,6 +173,7 @@ void mmslSetFrequency(int frequency)
   {
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
+      renderFrequencyToBuffer(frequency);
 #endif
       break;
     default:
@@ -244,6 +197,7 @@ void mmslPlayTone(unsigned int duration)
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
+      playBufferAlsa(duration);
 #endif
       break;
     default:
@@ -269,6 +223,8 @@ void mmslPlayPause(unsigned int duration)
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
+      Beep((int) duration, 0, mmslFrequency);
+      BeepWait();
 #endif
       break;
     default:
