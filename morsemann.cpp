@@ -366,13 +366,11 @@ void readCharSet(void)
       b = charSet[i++];
       if (((b < 97) || (b > 122)) && ((b < 48) || (b > 57)) && (b != 44) && (b != 46) && (b != 47) && (b != 61) && (b != 63))
       {
-	error = MM_TRUE;
-	errorTone();
+        error = MM_TRUE;
+        errorTone();
       }
     }
-
   } while ((charSetLength == 0) || (error == MM_TRUE));
-
 }
 
 /** Zeigt die aktuelle Auswahl der Zeichenmenge an.
@@ -403,26 +401,25 @@ void charGroupSelection(void)
     charGroupMenu();
     b = getch();
 
-      /* Cursor hoch */
-      if (b == KEY_UP)
-      {
-	if (selectedCharGroup == 1) selectedCharGroup = 8;
-	else selectedCharGroup--;
-      }
+    /* Cursor hoch */
+    if (b == KEY_UP)
+    {
+      if (selectedCharGroup == 1) selectedCharGroup = 8;
+      else selectedCharGroup--;
+    }
 
-      /* Cursor runter */
-      if (b == KEY_DOWN)
-      {
-	if (selectedCharGroup == 8) selectedCharGroup = 1;
-	else selectedCharGroup++;
-      }
+    /* Cursor runter */
+    if (b == KEY_DOWN)
+    {
+      if (selectedCharGroup == 8) selectedCharGroup = 1;
+      else selectedCharGroup++;
+    }
   }
 
   if (selectedCharGroup == 8)
   {
     readCharSet();
   }
-
 }
 
 /** Auswahl der Geschwindigkeit.
@@ -447,33 +444,33 @@ void speedSelection(void)
 
     b = getch();
 
-      /* Cursor hoch */
-      if (b == KEY_UP)
+    /* Cursor hoch */
+    if (b == KEY_UP)
+    {
+      if (bpm == 250)
+        bpm = 10;
+      else
       {
-	if (bpm == 250)
-	  bpm = 10;
-	else
-	{
-	  if (bpm >= 180)
-	    bpm += 10;
-	  else
-	    bpm += 5;
-	}
+        if (bpm >= 180)
+          bpm += 10;
+        else
+          bpm += 5;
       }
+    }
 
-      /* Cursor runter */
-      if (b == KEY_DOWN)
+    /* Cursor runter */
+    if (b == KEY_DOWN)
+    {
+      if (bpm == 10)
+        bpm = 250;
+      else
       {
-	if (bpm == 10)
-	  bpm = 250;
-	else
-	{
-	  if (bpm > 180)
-	    bpm -= 10;
-	  else
-	    bpm -= 5;
-	}
+        if (bpm > 180)
+          bpm -= 10;
+        else
+          bpm -= 5;
       }
+    }
   }
 
   textModusNormal();
@@ -501,19 +498,19 @@ void delaySelection(void)
 
     b = getch();
 
-      /* Cursor hoch */
-      if (b == KEY_UP)
-      {
-	if (delayFactor == 9) delayFactor = 1;
-	else delayFactor++;
-      }
+    /* Cursor hoch */
+    if (b == KEY_UP)
+    {
+      if (delayFactor == 9) delayFactor = 1;
+      else delayFactor++;
+    }
 
-      /* Cursor runter */
-      if (b == KEY_DOWN)
-      {
-	if (delayFactor == 1) delayFactor = 9;
-	else delayFactor--;
-      }
+    /* Cursor runter */
+    if (b == KEY_DOWN)
+    {
+      if (delayFactor == 1) delayFactor = 9;
+      else delayFactor--;
+    }
   }
 
   textModusNormal();
@@ -525,7 +522,7 @@ void delaySelection(void)
 void lengthSelection(void)
 {
   clrscr();
-  writeSelection("Gesamtanzahl der Buchstaben (mindestens 5!)",centerX-22,centerY-1,1,2);
+  writeSelection("Gesamtanzahl der Buchstaben (mindestens 5!)", centerX-22, centerY-1, 1, 2);
   do
   {
     totalLength = readNumber(centerX-2, centerY+1, 4, totalLength);
@@ -602,23 +599,23 @@ void optionsSelection(void)
       /* Cursor hoch */
       if (b == KEY_UP)
       {
-	if (currentOption == 1) currentOption = 6;
-	else currentOption--;
+        if (currentOption == 1) currentOption = 6;
+        else currentOption--;
       }
 
       /* Cursor runter */
       if (b == KEY_DOWN)
       {
-	if (currentOption == 6) currentOption = 1;
-	else currentOption++;
+        if (currentOption == 6) currentOption = 1;
+        else currentOption++;
       }
 
       /* Cursor rechts */
       if (b == KEY_RIGHT)
       {
-	if ((currentOption == 5) &&
-             (variableWords == MM_FALSE))
-	{
+        if ((currentOption == 5) &&
+            (variableWords == MM_FALSE))
+      	{
           if (fixedWordLength < 8) 
             fixedWordLength++;
           else
@@ -629,7 +626,7 @@ void optionsSelection(void)
       /* Cursor links */
       if (b == KEY_LEFT)
       {
-	if (currentOption == 5)
+      	if (currentOption == 5)
         {
           if (fixedWordLength > 2) 
             fixedWordLength--;
@@ -642,21 +639,21 @@ void optionsSelection(void)
     {
       switch (currentOption)
       {
-	case 1: charGroupSelection();
-		break;
-	case 2: speedSelection();
-		break;
-	case 3: delaySelection();
-		break;
-	case 4: lengthSelection();
-		break;
-	case 5: variableWords = 1 - variableWords;
-		break;
-	case 6: if (confirmChars < 2)
-		  confirmChars++;
-                else
-		  confirmChars = 0;
-		break;
+        case 1: charGroupSelection();
+          break;
+        case 2: speedSelection();
+          break;
+        case 3: delaySelection();
+          break;
+        case 4: lengthSelection();
+          break;
+        case 5: variableWords = 1 - variableWords;
+          break;
+        case 6: if (confirmChars < 2)
+            confirmChars++;
+                      else
+            confirmChars = 0;
+          break;
       }
     }
   }
@@ -748,16 +745,16 @@ void outputMorseCode(void)
 #ifdef CALIBRATE_MODE
       switch (lastSign)
       {
-	case 0:error = outputSign('p');
-	       break;
-	case 1:error = outputSign('a');
-	       break;
-	case 2:error = outputSign('r');
-	       break;
-	case 3:error = outputSign('i');
-	       break;
-	case 4:error = outputSign('s');
-	       break;
+        case 0:error = outputSign('p');
+              break;
+        case 1:error = outputSign('a');
+              break;
+        case 2:error = outputSign('r');
+              break;
+        case 3:error = outputSign('i');
+              break;
+        case 4:error = outputSign('s');
+              break;
       }
 
       lastSign++;
@@ -768,14 +765,14 @@ void outputMorseCode(void)
 
       if (confirmChars == 2)
       {
-	lastWord[charCount-1] = lastSign;
+      	lastWord[charCount-1] = lastSign;
       }
 #endif
       mmslPlayPause(dotLength*2+(delayFactor-1)*3);
       if (kbhit() != 0)
       {
-	b = getch();
-	if (b == KEY_BACKSPACE) error = MM_TRUE;
+        b = getch();
+        if (b == KEY_BACKSPACE) error = MM_TRUE;
       }
     } while ((charCount < wordLength) && (error == MM_FALSE));
 
@@ -807,12 +804,12 @@ void outputMorseCode(void)
       lineNumber++;
       if (lineNumber >= (screenY-1))
       {
-	clrscr();
-	lineNumber = 0;
+        clrscr();
+        lineNumber = 0;
       }
       else
       {
-	writeString("\n\r");
+      	writeString("\n\r");
       }
     }
 
@@ -869,31 +866,30 @@ void mainSelection(void)
       /* Cursor hoch */
       if (b == KEY_UP)
       {
-	if (currentSelection == 1) currentSelection = 3;
-	else currentSelection--;
+        if (currentSelection == 1) currentSelection = 3;
+        else currentSelection--;
       }
 
       /* Cursor runter */
       if (b == KEY_DOWN)
       {
-	if (currentSelection == 3) currentSelection = 1;
-	else currentSelection++;
+        if (currentSelection == 3) currentSelection = 1;
+        else currentSelection++;
       }
     if (b == 13)
     {
       switch (currentSelection)
       {
-	case 1: tone = (mmRandom(7) + 6) * 100;
-                mmslSetFrequency(tone);
-		outputMorseCode();
-		break;
-	case 2: optionsSelection();
-		break;
-	case 3: return;
+        case 1: tone = (mmRandom(7) + 6) * 100;
+                      mmslSetFrequency(tone);
+          outputMorseCode();
+          break;
+        case 2: optionsSelection();
+          break;
+        case 3: return;
       }
     }
   }
-
 }
 
 /** Beendet den ``ncurses''-Modus.
@@ -912,22 +908,8 @@ static void finish(int sig)
 */
 int main(void)
 {
-  if (!mmslInitSoundSystem(MMSL_ALSA))
+  if (!mmslInitSoundSystem(MMSL_PORTAUDIO))
     return 1;
-
-mmslSetFrequency(600);
-
-mmslPlayTone(100);
-
-mmslPlayPause(2000);
-
-mmslPlayTone(100);
-
-mmslPlayPause(2000);
-
-mmslPlayTone(100);
-
-mmslPlayPause(2000);
 
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
