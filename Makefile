@@ -1,5 +1,4 @@
-# Makefile for/für ``Morsemann v2.0''
-# by Dirk Bächle (dl9obn@darc.de), 10.08.2008
+# Makefile for/für ``Morsemann''
 #
 # Available targets/Verfügbare ``Targets'':
 #   all, allusers, clean, clean-dist
@@ -19,8 +18,8 @@ CURSESLIB = -lncurses
 # properly support colors...
 # CXXFLAGS += -DNO_COLORS
 
-CXXFLAGS += -DHAVE_PORTAUDIO
-SOUNDLIBS = -lportaudio
+CXXFLAGS += -DHAVE_ALSA
+SOUNDLIBS = -lasound
 
 #
 # You shouldn't have to edit something below here!!!

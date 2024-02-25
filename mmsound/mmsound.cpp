@@ -2,9 +2,9 @@
 #include "beep.h"
 #include "alarm.h"
 
-#ifdef HAVE_PORTAUDIO
+#ifdef HAVE_ALSA
 #include <cmath>
-#include <portaudio.h>
+#include <alsa/asoundlib.h>
 #endif
 
 #include <iostream>
@@ -18,109 +18,61 @@ static int mmslFrequency = 800;
 static int mmslSmoothen = 0;
 static int mmslSystem = MMSL_NONE;
 
-#ifdef HAVE_PORTAUDIO
-// Init PortAudio device with ...
-#define SAMPLE_RATE         44100
-#define FRAMES_PER_BUFFER   1024
-#define CHANNELS            2
-
- /* stereo output buffer */
-float buffer[FRAMES_PER_BUFFER][2];
-PaStreamParameters outputParameters;
-PaStream *stream;
-PaError err;
-
-// Length of our complete rendering buffer
-#define BUF_LEN 8 * 44100
-// Rendering buffer for output to PortAudio
+#ifdef HAVE_ALSA
+// Length of our complete buffer
+#define BUF_LEN 8 * 48000
+// Buffer for output to Alsa
 float g_buffer[BUF_LEN];
+// Our output device
+snd_pcm_t *pcm_handle;
+int channels =1;
+snd_pcm_format_t format = SND_PCM_FORMAT_FLOAT;
+int rate = 48000;
 
-bool initPortAudio(const std::string& device)
+bool initAlsa(const std::string& device)
 {
-    err = Pa_Initialize();
-    if (err != paNoError)
-    {
-      cerr << "Error: Couldn't initialize PortAudio.\n" << endl;
+      string pcm_device(device);
+      if (pcm_device.empty())
+      {
+        pcm_device = "default";
+      }
+
+   int err;
+
+    if ((err = snd_pcm_open(&pcm_handle, pcm_device.c_str(), SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+      cerr << "Playback open error: " <<  snd_strerror(err) << endl;
       return false;
     }
 
-    outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
-    if (outputParameters.device == paNoDevice)
-    {
-      cerr << "Error: No default output device for PortAudio.\n" << endl;
+    if ((err = snd_pcm_set_params(pcm_handle,
+        format,
+        // SND_PCM_FORMAT_S16_LE,
+        SND_PCM_ACCESS_RW_INTERLEAVED,
+        channels,
+        // BUF_LEN,
+        rate,
+        1, /* period */
+        500000)) < 0) {	 /* latency: 0.5sec */ 
+      cerr << "Playback open error: " << snd_strerror(err) << endl;
       return false;
     }
-    outputParameters.channelCount = CHANNELS;       /* stereo output */
-    outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
-    outputParameters.suggestedLatency = 0.050; // Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
-    outputParameters.hostApiSpecificStreamInfo = NULL;
-
-    err = Pa_OpenStream(
-              &stream,
-              NULL, /* no input */
-              &outputParameters,
-              SAMPLE_RATE,
-              FRAMES_PER_BUFFER,
-              paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-              NULL, /* no callback, use blocking API */
-              NULL); /* no callback, so no callback userData */
-    if (err != paNoError)
-    {
-        cerr << "Error: Couldn't open stream for PortAudio.\n" << endl;
-        return false;
-    }
-
-    err = Pa_StartStream(stream);
-    if (err != paNoError)
-    {
-        cerr << "Error: Couldn't start the stream for PortAudio.\n" << endl;
-    }
-
     return true;
 }
 
-void playBufferPortAudio(unsigned int duration)
+void playBufferAlsa(unsigned int duration)
 {
-  unsigned long int nbSamples = SAMPLE_RATE * ((float) duration / 1000.0);
-  if (nbSamples > 0)
-  {
-    // Sending the sound
-    unsigned long int sample = 0;
-    unsigned long int bufferCount = nbSamples / FRAMES_PER_BUFFER;
-    unsigned long int i = 0;
-    unsigned long int j = 0;
-
-    for(; i < bufferCount; ++i)
-    {
-      for(j=0; j < FRAMES_PER_BUFFER; ++j)
-      {
-          buffer[j][0] = g_buffer[sample];  /* left */
-          buffer[j][1] = g_buffer[sample];  /* right */
-          ++sample;
-      }
-
-      Pa_WriteStream( stream, buffer, FRAMES_PER_BUFFER );
+    int nbSamples = rate * channels * ((float) duration / 1000.0);
+    if (nbSamples >0) {
+      // Sending the sound
+      snd_pcm_writei(pcm_handle, g_buffer, nbSamples);
+      snd_pcm_drain(pcm_handle);
     }
-
-    // Send remainder of samples
-    unsigned long int remaining = nbSamples - sample;
-    if (remaining > 0)
-    {
-      for(j=0; j < remaining; ++j)
-      {
-          buffer[j][0] = g_buffer[sample];  /* left */
-          buffer[j][1] = g_buffer[sample];  /* right */
-          ++sample;
-      }
-      Pa_WriteStream(stream, buffer, remaining);
-    }
-  }
 }
 
-void renderFrequencyToBufferPortAudio(int frequency)
+void renderFrequencyToBuffer(int frequency)
 {
-    float t = 2*M_PI*frequency/(SAMPLE_RATE * CHANNELS);
-    for (int i=0; i < BUF_LEN; ++i) {
+    float t = 2*M_PI*frequency/(rate*channels);
+    for (int i=0; i< BUF_LEN; ++i) {
         g_buffer[i] = sin(t*i);
     }
 }
@@ -177,15 +129,15 @@ bool mmslInitSoundSystem(int system, const std::string &device)
       Beep(100, 0, 800);
       BeepWait();
       break;
-    case MMSL_PORTAUDIO:
-#ifdef HAVE_PORTAUDIO
-      if (initPortAudio(device))
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      if (initAlsa(device))
       {
-        mmslSystem = MMSL_PORTAUDIO;
+        mmslSystem = MMSL_ALSA;
         return true;  
       }
 #endif
-      cerr << "mmslInitSoundSystem: PortAudio support is not available!" << endl;
+      cerr << "mmslInitSoundSystem: ALSA support is not available!" << endl;
       return false;
       break;
     default:
@@ -200,13 +152,16 @@ void mmslCloseSoundSystem()
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-      BeepCleanup();
+        BeepCleanup();
       break;
-    case MMSL_PORTAUDIO:
-#ifdef HAVE_PORTAUDIO
-      Pa_StopStream(stream);
-      Pa_CloseStream(stream);
-      Pa_Terminate();
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      if (pcm_handle)
+      {
+        snd_pcm_drain(pcm_handle);
+        snd_pcm_close(pcm_handle);
+        pcm_handle = NULL;
+      }
 #endif
       break;
     default:
@@ -221,8 +176,8 @@ bool mmslSoundSystemAvailable(int system)
     case MMSL_SPEAKER:
       return true;
       break;
-    case MMSL_PORTAUDIO:
-#ifdef HAVE_PORTAUDIO
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
       return true;
 #else
       return false;
@@ -243,9 +198,9 @@ void mmslSetFrequency(int frequency)
 {
   switch (mmslSystem)
   {
-    case MMSL_PORTAUDIO:
-#ifdef HAVE_PORTAUDIO
-      renderFrequencyToBufferPortAudio(frequency);
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      renderFrequencyToBuffer(frequency);
 #endif
       break;
     default:
@@ -262,9 +217,9 @@ void mmslPlayTone(unsigned int duration)
       Beep((int) duration, 10, mmslFrequency);
       BeepWait();
       break;
-    case MMSL_PORTAUDIO:
-#ifdef HAVE_PORTAUDIO
-      playBufferPortAudio(duration);
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      playBufferAlsa(duration);
 #endif
       break;
     default:
@@ -280,7 +235,7 @@ void mmslPlayPause(unsigned int duration)
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-    case MMSL_PORTAUDIO:
+    case MMSL_ALSA:
       AlarmWait();
       AlarmSet(duration);
       AlarmWait();
@@ -304,8 +259,8 @@ void mmslPlayErrorTone(unsigned int dotLength)
       Beep(dotLength*3, 0, 500);
       BeepWait();
       break;
-    case MMSL_PORTAUDIO:
-#ifdef HAVE_PORTAUDIO
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
 #endif
       break;
   }

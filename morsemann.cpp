@@ -908,7 +908,7 @@ static void finish(int sig)
 */
 int main(void)
 {
-  if (!mmslInitSoundSystem(MMSL_PORTAUDIO))
+  if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
 
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
