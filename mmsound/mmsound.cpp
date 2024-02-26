@@ -19,62 +19,109 @@ static int mmslSmoothen = 0;
 static int mmslSystem = MMSL_NONE;
 
 #ifdef HAVE_ALSA
-// Length of our complete buffer
-#define BUF_LEN 8 * 48000
-// Buffer for output to Alsa
-float g_buffer[BUF_LEN];
+// Length of our complete render buffer: 8 * 48000 = 384000
+#define BUF_LEN 384000
+// Render buffer for output to Alsa
+unsigned short g_buffer[BUF_LEN];
+// Length of our audio buffer towards ALSA: 16*1024 = 16384
+#define AUDIO_BUFFER_SIZE	16384
+unsigned short audio_buffer[AUDIO_BUFFER_SIZE];
+
 // Our output device
-snd_pcm_t *pcm_handle;
-int channels =1;
-snd_pcm_format_t format = SND_PCM_FORMAT_FLOAT;
+snd_pcm_t *pcm_handle = NULL;
+int channels = 1;
+snd_pcm_format_t format = SND_PCM_FORMAT_S16_LE;
 int rate = 48000;
 
 bool initAlsa(const std::string& device)
 {
-      string pcm_device(device);
-      if (pcm_device.empty())
-      {
-        pcm_device = "default";
-      }
+  string pcm_device(device);
+  if (pcm_device.empty())
+  {
+    pcm_device = "default";
+  }
 
-   int err;
+  int err;
+  if ((err = snd_pcm_open(&pcm_handle, pcm_device.c_str(), SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+    cerr << "MMSound ALSA open error: " << snd_strerror(err) << endl;
+    return false;
+  }
 
-    if ((err = snd_pcm_open(&pcm_handle, pcm_device.c_str(), SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
-      cerr << "Playback open error: " <<  snd_strerror(err) << endl;
-      return false;
-    }
+	if ((err = snd_pcm_set_params(pcm_handle,
+				format,
+				SND_PCM_ACCESS_RW_INTERLEAVED,
+				channels,
+				rate,
+				1, /* period */
+				500000)) < 0) {  /* latency: 0.5s */
+		cerr << "MMSound ALSA error in snd_pcm_set_params: " << snd_strerror(err) << endl;
+		return false;
+	}
 
-    if ((err = snd_pcm_set_params(pcm_handle,
-        format,
-        // SND_PCM_FORMAT_S16_LE,
-        SND_PCM_ACCESS_RW_INTERLEAVED,
-        channels,
-        // BUF_LEN,
-        rate,
-        1, /* period */
-        500000)) < 0) {	 /* latency: 0.5sec */ 
-      cerr << "Playback open error: " << snd_strerror(err) << endl;
-      return false;
-    }
-    return true;
+  return true;
 }
 
-void playBufferAlsa(unsigned int duration)
+void playBufferAlsa(unsigned int duration, bool sound = true)
 {
-    int nbSamples = rate * channels * ((float) duration / 1000.0);
-    if (nbSamples >0) {
+  unsigned long int nbSamples = rate * channels * (((float) duration) / 1000.0);
+  unsigned long int sample = 0;
+  if (nbSamples > 0)
+  {
+    int loops = nbSamples / AUDIO_BUFFER_SIZE;
+    int i = 0;
+    int j;
+    for (; i < loops; ++i)
+    {
+      if (sound)
+      {
+        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
+        {
+          audio_buffer[j] = g_buffer[sample++];
+        }
+      }
+      else
+      {
+        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
+        {
+          audio_buffer[j] = 0;
+          ++sample;
+        }
+      }
       // Sending the sound
-      snd_pcm_writei(pcm_handle, g_buffer, nbSamples);
-      snd_pcm_drain(pcm_handle);
+      snd_pcm_writei(pcm_handle, audio_buffer, AUDIO_BUFFER_SIZE);
     }
+    unsigned long int remaining = nbSamples - sample;
+    if (remaining > 0)
+    {
+      if (sound)
+      {
+        for (j = 0; j < remaining; ++j)
+        {
+          audio_buffer[j] = g_buffer[sample++];
+        }
+      }
+      else
+      {
+        for (j = 0; j < remaining; ++j)
+        {
+          audio_buffer[j] = 0;
+        }
+      }
+      // Sending the sound
+      snd_pcm_writei(pcm_handle, audio_buffer, remaining);
+    }
+  }
 }
 
 void renderFrequencyToBuffer(int frequency)
 {
-    float t = 2*M_PI*frequency/(rate*channels);
-    for (int i=0; i< BUF_LEN; ++i) {
-        g_buffer[i] = sin(t*i);
-    }
+  int amp = 100;
+  int amplitude = (int)((double) amp * 327.67);
+
+  float t = 2*M_PI*frequency/(rate*channels);
+  for (int i = 0; i < BUF_LEN; ++i) {
+      g_buffer[i] = (int) (sin(t*i) * amplitude);
+  }
 }
 
 //
@@ -145,6 +192,40 @@ bool mmslInitSoundSystem(int system, const std::string &device)
   }
 
   return true;
+}
+
+void mmslPrepareSoundStream()
+{
+  switch (mmslSystem)
+  {
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      if (pcm_handle)
+      {
+        snd_pcm_prepare(pcm_handle);
+      }
+#endif
+      break;
+    default:
+      break;
+  }
+}
+
+void mmslDrainSoundStream()
+{
+  switch (mmslSystem)
+  {
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      if (pcm_handle)
+      {
+        snd_pcm_drain(pcm_handle);
+      }
+#endif
+      break;
+    default:
+      break;
+  }
 }
 
 void mmslCloseSoundSystem()
@@ -235,10 +316,13 @@ void mmslPlayPause(unsigned int duration)
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-    case MMSL_ALSA:
-      AlarmWait();
       AlarmSet(duration);
       AlarmWait();
+      break;
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA    
+      playBufferAlsa(duration, false);
+#endif
       break;
     default:
       break;

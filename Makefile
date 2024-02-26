@@ -18,7 +18,7 @@ CURSESLIB = -lncurses
 # properly support colors...
 # CXXFLAGS += -DNO_COLORS
 
-CXXFLAGS += -DHAVE_ALSA
+CXXFLAGS += -DHAVE_ALSA -g -O2 -Wall -Wextra
 SOUNDLIBS = -lasound
 
 #

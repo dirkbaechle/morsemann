@@ -258,6 +258,7 @@ void byeMessage(void)
   mmslSetFrequency(tone);
   /* Setze Geschwindigkeit auf 120 bpm */
   dotLength = 50;
+  mmslPrepareSoundStream();
   outputSign('7');
   mmslPlayPause(dotLength*2);
   outputSign('3');
@@ -726,6 +727,7 @@ void outputMorseCode(void)
 
   clrscr();
   refresh();
+  mmslPrepareSoundStream();
   mmslPlayPause(1000);
 
   errorCount = 0;
@@ -951,7 +953,6 @@ int main(void)
   byeMessage();
   showCursor();
 
-  mmslCloseSoundSystem();
   finish(0);               /* we're done */
 
   return(0);
