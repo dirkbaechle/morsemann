@@ -67,7 +67,7 @@ void writeChar(char b)
 */
 void gotoxy(int xpos, int ypos)
 {
-  move(ypos-1, xpos-1);
+  move(ypos - 1, xpos - 1);
 }
 
 /** Löscht den aktuellen Bildschirm und ermittelt
@@ -104,7 +104,7 @@ an die Position \a xpos, \a ypos.
 */
 void moveWrite(int ypos, int xpos, const char *fmt, const string& str)
 {
-  mvprintw(ypos-1, xpos-1, fmt, str.c_str());
+  mvprintw(ypos - 1, xpos - 1, fmt, str.c_str());
 }
 
 /** Schaltet in den ``normalen'' Text-Modus, d.h.
@@ -200,28 +200,28 @@ string readString(int xpos, int ypos, int max, const string& str)
   {
     letter = getch();
 
-      if (letter == KEY_BACKSPACE)
+    if (letter == KEY_BACKSPACE)
+    {
+      if (stringLength > 0)
       {
-	if (stringLength > 0)
-	{
-	  stringLength--;
-	  stringCopy = stringCopy.substr(0, stringLength);
-          moveWrite(ypos, xpos, "%s ", stringCopy);
-          gotoxy(xpos+stringLength, ypos);
-	}
+        --stringLength;
+        stringCopy = stringCopy.substr(0, stringLength);
+        moveWrite(ypos, xpos, "%s ", stringCopy);
+        gotoxy(xpos+stringLength, ypos);
       }
-      else
+    }
+    else
+    {
+      if (letter > 31)
       {
-        if (letter > 31)
+        if (stringLength < max)
         {
-	  if (stringLength < max)
-	  {
-	    stringCopy += letter;
-	    stringLength++;
-	    moveWrite(ypos, xpos, "%s", stringCopy);
-	  }
+          stringCopy += letter;
+          ++stringLength;
+          moveWrite(ypos, xpos, "%s", stringCopy);
         }
       }
+    }
   }
   if (letter == 27)
   {
@@ -259,28 +259,28 @@ int readNumber(int xpos, int ypos, int max, int number)
   while ((letter != 27) && (letter != 13))
   {
     letter = getch();
-      if (letter == KEY_BACKSPACE)
+    if (letter == KEY_BACKSPACE)
+    {
+      if (stringLength > 0)
       {
-	if (stringLength > 0)
-	{
-	  stringLength--;
-	  stringCopy = stringCopy.substr(0, stringLength);
-          moveWrite(ypos, xpos, "%s ", stringCopy);
-          gotoxy(xpos+stringLength, ypos);
-	}
+        --stringLength;
+        stringCopy = stringCopy.substr(0, stringLength);
+        moveWrite(ypos, xpos, "%s ", stringCopy);
+        gotoxy(xpos+stringLength, ypos);
       }
-      else
+    }
+    else
+    {
+      if ((letter > 47) && (letter < 58))
       {
-        if ((letter > 47) && (letter < 58))
+        if (stringLength < max)
         {
-	  if (stringLength < max)
-	  {
-	    stringCopy += letter;
-	    stringLength++;
-	    moveWrite(ypos, xpos, "%s", stringCopy);
-	  }
+          stringCopy += letter;
+          ++stringLength;
+          moveWrite(ypos, xpos, "%s", stringCopy);
         }
       }
+    }
   }
 
   if (letter != 27)

@@ -1,9 +1,9 @@
 /* Morsemann - Ein kleines Programm zum Lernen und Üben des
 *              Hörens von Morsezeichen (CW).
 *
-* Copyright (C) 2003 by Dirk Baechle (dl9obn@darc.de)
+* Copyright (C) 2003-2024 by Dirk Baechle (dl9obn@darc.de)
 *
-* http://www.darc.de/distrikte/h/43/programme/morsemann
+* https://github.com/dirkbaechle/morsemann
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU General Public License
@@ -30,7 +30,7 @@
 Der ``Morsemann''. Ein kleines Programm zum Lernen und Üben des Hörens
 von Morsezeichen (CW).
 \author Dirk Bächle
-\version 1.1
+\version 1.3
 \date 2003-03-07
 */
 
@@ -78,12 +78,6 @@ const int MENU_WIDTH = 4;
 
 /*------------------------------------------------ Global variables */
 
-/** Tonhöhe */
-int tone;
-/** Länge eines Punktes in Millisekunden */
-int dotLength = 100;
-/** Geschwindigkeit in Buchstaben pro Minute (bpm) */
-int bpm = 60;
 /** Pausenfaktor */
 int delayFactor = 1;
 /** Auswahl der Zeichenmenge (1-8) */
@@ -118,8 +112,8 @@ char groupString[8][50] = {"Alle Zeichen",
 */
 void dit(void)
 {
-  mmslPlayTone(dotLength);
-  mmslPlayPause(dotLength);
+  mmslPlayToneDits(1);
+  mmslPlayPauseDits(1);
 }
 
 /** Erzeugt einen Ton von der Länge eines Striches
@@ -127,15 +121,15 @@ void dit(void)
 */
 void dah(void)
 {
-  mmslPlayTone(dotLength*3);
-  mmslPlayPause(dotLength);
+  mmslPlayToneDits(3);
+  mmslPlayPauseDits(1);
 }
 
 /** Gibt einen Fehlerton aus.
 */
 void errorTone(void)
 {
-  mmslPlayErrorTone(dotLength);
+  mmslPlayErrorTone();
 }
 
 /** Erzeugt eine Zufallszahl im Bereich von 0 bis \a maxNumber minus
@@ -154,17 +148,18 @@ int mmRandom(int maxNumber)
 */
 int writeSign(char b)
 {
-  keyChar letter='0';
+  keyChar letter = '0';
 
   if (confirmChars == 1)
   {
     /* Mit Abfrage */
     letter = getch();
-    if (letter == b)
+    if (letter == static_cast<keyChar>(b))
     {
       /* Buchstabe richtig */
       textModusNormal();
       writeChar(b);
+      mmslPrepareSoundStream();
     }
     else
     {
@@ -173,8 +168,9 @@ int writeSign(char b)
       textModusError();
       writeChar(b);
       textModusNormal();
+      mmslPrepareSoundStream();
       errorTone();
-      errorCount++;
+      ++errorCount;
     }
   }
   else
@@ -254,31 +250,29 @@ void byeMessage(void)
 {
   clrscr();
   gotoxy(centerX - 6, centerY);
-  tone = (mmRandom(7)+6)*100;
-  mmslSetFrequency(tone);
-  /* Setze Geschwindigkeit auf 120 bpm */
-  dotLength = 50;
+  mmslSetFrequency((mmRandom(5) + 6) * 100);
+  mmslSetBpm(120);
   mmslPrepareSoundStream();
   outputSign('7');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   outputSign('3');
-  mmslPlayPause(dotLength*6);
+  mmslPlayPauseDits(6);
   writeChar(' ');
   outputSign('d');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   outputSign('e');
-  mmslPlayPause(dotLength*6);
+  mmslPlayPauseDits(6);
   writeChar(' ');
   outputSign('d');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   outputSign('l');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   outputSign('9');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   outputSign('o');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   outputSign('b');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   outputSign('n');
   mmslPlayPause(500);
 }
@@ -392,10 +386,10 @@ void charGroupMenu(void)
 */
 void charGroupSelection(void)
 {
-  keyChar b='0';
+  keyChar b = '0';
 
   clrscr();
-  writeSelection("Auswahl der Zeichen",centerX-10,centerY-5,1,2);
+  writeSelection("Auswahl der Zeichen", centerX-10, centerY-5, 1, 2);
 
   while ((b != KEY_BACKSPACE) && (b != 13))
   {
@@ -406,14 +400,14 @@ void charGroupSelection(void)
     if (b == KEY_UP)
     {
       if (selectedCharGroup == 1) selectedCharGroup = 8;
-      else selectedCharGroup--;
+      else --selectedCharGroup;
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
       if (selectedCharGroup == 8) selectedCharGroup = 1;
-      else selectedCharGroup++;
+      else ++selectedCharGroup;
     }
   }
 
@@ -427,12 +421,13 @@ void charGroupSelection(void)
 */
 void speedSelection(void)
 {
-  keyChar b='0';
+  keyChar b = '0';
 
   clrscr();
   writeSelection("Auswahl der Geschwindigkeit", centerX-15, centerY-1, 1, 2);
 
   textModusSelect();
+  unsigned int bpm = mmslGetBpm();
 
   while ((b != KEY_BACKSPACE) && (b != 13))
   {
@@ -476,15 +471,14 @@ void speedSelection(void)
 
   textModusNormal();
 
-  dotLength = (int) (6000/bpm);
-
+  mmslSetBpm(bpm);
 }
 
 /** Auswahl des Pausenfaktors.
 */
 void delaySelection(void)
 {
-  keyChar b='0';
+  keyChar b = '0';
 
   clrscr();
   writeSelection("Auswahl des Pausenfaktors", centerX-11, centerY-1, 1, 2);
@@ -503,14 +497,14 @@ void delaySelection(void)
     if (b == KEY_UP)
     {
       if (delayFactor == 9) delayFactor = 1;
-      else delayFactor++;
+      else ++delayFactor;
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
       if (delayFactor == 1) delayFactor = 9;
-      else delayFactor--;
+      else --delayFactor;
     }
   }
 
@@ -547,7 +541,7 @@ void optionsMenu(int akt)
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeString(groupString[selectedCharGroup - 1]);
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
-  writeNumber(bpm);
+  writeNumber(mmslGetBpm());
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
   writeNumber(delayFactor);
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
@@ -589,7 +583,7 @@ void optionsMenu(int akt)
 */
 void optionsSelection(void)
 {
-  keyChar b='0';
+  keyChar b = '0';
   int currentOption = 1;
 
   while (b != KEY_BACKSPACE)
@@ -601,14 +595,14 @@ void optionsSelection(void)
       if (b == KEY_UP)
       {
         if (currentOption == 1) currentOption = 6;
-        else currentOption--;
+        else --currentOption;
       }
 
       /* Cursor runter */
       if (b == KEY_DOWN)
       {
         if (currentOption == 6) currentOption = 1;
-        else currentOption++;
+        else ++currentOption;
       }
 
       /* Cursor rechts */
@@ -618,7 +612,7 @@ void optionsSelection(void)
             (variableWords == MM_FALSE))
       	{
           if (fixedWordLength < 8) 
-            fixedWordLength++;
+            ++fixedWordLength;
           else
             fixedWordLength = 2;
         } 
@@ -630,7 +624,7 @@ void optionsSelection(void)
       	if (currentOption == 5)
         {
           if (fixedWordLength > 2) 
-            fixedWordLength--;
+            --fixedWordLength;
           else
             fixedWordLength = 8;
         } 
@@ -651,7 +645,7 @@ void optionsSelection(void)
         case 5: variableWords = 1 - variableWords;
           break;
         case 6: if (confirmChars < 2)
-            confirmChars++;
+            ++confirmChars;
                       else
             confirmChars = 0;
           break;
@@ -678,14 +672,14 @@ int compareStrings(char *userWord, char *lastWord)
     {
       textModusError();
       writeChar(lastWord[pos]);
-      errors++;
+      ++errors;
       textModusNormal();
     }
     else
     {
       writeChar(lastWord[pos]);
     }
-    pos++;
+    ++pos;
   }
 
   /* Sind noch Zeichen übrig? */
@@ -695,8 +689,8 @@ int compareStrings(char *userWord, char *lastWord)
     while (lastWord[pos] != 0)
     {
       writeChar(lastWord[pos]);
-      pos++;
-      errors++;
+      ++pos;
+      ++errors;
     }
     textModusNormal();
 
@@ -741,9 +735,9 @@ void outputMorseCode(void)
   {
     do
     {
-      charCount++;
-      currentLength++;
-      lineCount++;
+      ++charCount;
+      ++currentLength;
+      ++lineCount;
 #ifdef CALIBRATE_MODE
       switch (lastSign)
       {
@@ -759,7 +753,7 @@ void outputMorseCode(void)
               break;
       }
 
-      lastSign++;
+      ++lastSign;
       if (lastSign == 5) lastSign = 0;
 #else
       lastSign = signRandom();
@@ -770,7 +764,9 @@ void outputMorseCode(void)
       	lastWord[charCount-1] = lastSign;
       }
 #endif
-      mmslPlayPause(dotLength*2+(delayFactor-1)*3);
+      // 2*dotlength + (delay-1)*3
+      mmslPlayPauseDits(2);
+      mmslPlayPause((delayFactor-1) * 3);
       if (kbhit() != 0)
       {
         b = getch();
@@ -783,11 +779,12 @@ void outputMorseCode(void)
       lastWord[charCount] = 0;
       userWord[0] = 0;
       getyx(stdscr, posY, posX);
-      posX++;
-      posY++;
+      ++posX;
+      ++posY;
       readString(posX, posY, wordLength, userWord);
       gotoxy(posX, posY);
       errorCount += compareStrings(userWord, lastWord);
+      mmslPrepareSoundStream();
     }
 
     charCount = 0;
@@ -798,12 +795,12 @@ void outputMorseCode(void)
     if (wordLength+lineCount < (screenX-1))
     {
       writeChar(' ');
-      lineCount++;
+      ++lineCount;
     }
     else
     {
       lineCount = 0;
-      lineNumber++;
+      ++lineNumber;
       if (lineNumber >= (screenY-1))
       {
         clrscr();
@@ -815,7 +812,7 @@ void outputMorseCode(void)
       }
     }
 
-    mmslPlayPause(dotLength*4*delayFactor);
+    mmslPlayPauseDits(4*delayFactor);
   } while ((currentLength < totalLength) && (error == MM_FALSE));
 
   if (kbhit() != 0)
@@ -825,7 +822,7 @@ void outputMorseCode(void)
 
   writeString("\n\r");
   dit();dah();dit();dah();dit();writeChar('+');
-  mmslPlayPause(dotLength*2);
+  mmslPlayPauseDits(2);
   writeChar(' ');dit();dit();dit();dah();dit();dah();writeString("sk");
   if (confirmChars != 0)
   {
@@ -846,7 +843,7 @@ void mainMenu(int current)
 {
   clrscr(); 
   writeSelection("*** Der Morsemann v1.3 ***",centerX-13, centerY-3, 1, 2);
-  writeSelection("by Dirk Bächle (dl9obn@darc.de), 07.03.2003",centerX-23, screenY, 1, 2);
+  writeSelection("by Dirk Bächle (dl9obn@darc.de), 2003-03-07",centerX-23, screenY, 1, 2);
 
   writeSelection("Start", centerX-MENU_WIDTH, centerY-1, 1, current);
   writeSelection("Optionen", centerX-MENU_WIDTH, centerY, 2, current);
@@ -857,7 +854,7 @@ void mainMenu(int current)
 */
 void mainSelection(void)
 {
-  keyChar b='0';
+  keyChar b = '0';
   int currentSelection = 1;
 
   while (1)
@@ -869,21 +866,20 @@ void mainSelection(void)
       if (b == KEY_UP)
       {
         if (currentSelection == 1) currentSelection = 3;
-        else currentSelection--;
+        else --currentSelection;
       }
 
       /* Cursor runter */
       if (b == KEY_DOWN)
       {
         if (currentSelection == 3) currentSelection = 1;
-        else currentSelection++;
+        else ++currentSelection;
       }
     if (b == 13)
     {
       switch (currentSelection)
       {
-        case 1: tone = (mmRandom(7) + 6) * 100;
-                      mmslSetFrequency(tone);
+        case 1: mmslSetFrequency((mmRandom(5) + 6) * 100);
           outputMorseCode();
           break;
         case 2: optionsSelection();
@@ -896,7 +892,7 @@ void mainSelection(void)
 
 /** Beendet den ``ncurses''-Modus.
 */
-static void finish(int sig)
+static void finish(int /* sig */)
 {
   endwin();
 
@@ -957,4 +953,3 @@ int main(void)
 
   return(0);
 }
-

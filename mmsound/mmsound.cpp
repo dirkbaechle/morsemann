@@ -14,6 +14,10 @@ using std::cerr;
 using std::endl;
 using std::string;
 
+/** Geschwindigkeit in Buchstaben pro Minute (bpm) */
+static unsigned int mmslBpm = 60;
+/** Länge eines Punktes in Millisekunden */
+static unsigned int mmslDotLength = 100;
 static int mmslFrequency = 800;
 static int mmslSmoothen = 0;
 static int mmslSystem = MMSL_NONE;
@@ -67,9 +71,9 @@ void playBufferAlsa(unsigned int duration, bool sound = true)
   unsigned long int sample = 0;
   if (nbSamples > 0)
   {
-    int loops = nbSamples / AUDIO_BUFFER_SIZE;
-    int i = 0;
-    int j;
+    unsigned long int loops = nbSamples / AUDIO_BUFFER_SIZE;
+    unsigned long int i = 0;
+    unsigned long int j;
     for (; i < loops; ++i)
     {
       if (sound)
@@ -118,7 +122,7 @@ void renderFrequencyToBuffer(int frequency)
   int amp = 100;
   int amplitude = (int)((double) amp * 327.67);
 
-  float t = 2*M_PI*frequency/(rate*channels);
+  float t = ((float) 2 * M_PI * frequency) / (rate * channels);
   for (int i = 0; i < BUF_LEN; ++i) {
       g_buffer[i] = (int) (sin(t*i) * amplitude);
   }
@@ -308,6 +312,24 @@ void mmslPlayTone(unsigned int duration)
   }
 }
 
+void mmslPlayToneDits(unsigned int dits)
+{
+  switch (mmslSystem)
+  {
+    case MMSL_SPEAKER:
+      Beep((int) dits * mmslDotLength, 10, mmslFrequency);
+      BeepWait();
+      break;
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      playBufferAlsa(dits * mmslDotLength);
+#endif
+      break;
+    default:
+      break;
+  }
+}
+
 /** Erzeugt eine Pause von \a duration Millisekunden.
 @param duration Anzahl der Millisekunden
 */
@@ -329,18 +351,39 @@ void mmslPlayPause(unsigned int duration)
   }
 }
 
-void mmslPlayErrorTone(unsigned int dotLength)
+/** Erzeugt eine Pause in der Länge von \a dits Punkten.
+@param dits Anzahl der Punkte 
+*/
+void mmslPlayPauseDits(unsigned int dits)
 {
   switch (mmslSystem)
   {
     case MMSL_SPEAKER:
-      Beep(dotLength, 10, 700);
+      AlarmSet(dits * mmslDotLength);
+      AlarmWait();
+      break;
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA    
+      playBufferAlsa(dits * mmslDotLength, false);
+#endif
+      break;
+    default:
+      break;
+  }
+}
+
+void mmslPlayErrorTone()
+{
+  switch (mmslSystem)
+  {
+    case MMSL_SPEAKER:
+      Beep(mmslDotLength, 10, 700);
       BeepWait();
-      Beep(dotLength, 10, 600);
+      Beep(mmslDotLength, 10, 600);
       BeepWait();
-      Beep(dotLength, 10, 500);
+      Beep(mmslDotLength, 10, 500);
       BeepWait();
-      Beep(dotLength*3, 0, 500);
+      Beep(mmslDotLength*3, 0, 500);
       BeepWait();
       break;
     case MMSL_ALSA:
@@ -350,3 +393,13 @@ void mmslPlayErrorTone(unsigned int dotLength)
   }
 }
 
+void mmslSetBpm(unsigned int bpm)
+{
+  mmslDotLength = (int) (6000/bpm);
+  mmslBpm = bpm;
+}
+
+unsigned int mmslGetBpm()
+{
+  return mmslBpm;
+}

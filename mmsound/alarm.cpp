@@ -57,12 +57,12 @@ static void AlarmHandler()
 }
 #else
 #ifdef USE_SIGINFO
-static void AlarmHandler(int sig, siginfo_t *siginfo, void *context)
+static void AlarmHandler(int /* sig */, siginfo_t * /* siginfo */, void * /* context */)
 {
     alarmPending = 0;
 }
 #else
-static void AlarmHandler(int sig)
+static void AlarmHandler(int /* sig */)
 {
     alarmPending = 0;
 }
@@ -75,7 +75,6 @@ static void AlarmHandler(int sig)
 int AlarmSet(int time)
 {
 #ifdef LINUXSIGS
-  sigset_t sigset;
   struct sigaction sigact;
 #endif
 
