@@ -21,6 +21,8 @@ using std::map;
 static unsigned int mmslBpm = 60;
 /** Länge eines Punktes in Millisekunden */
 static unsigned int mmslDotLength = 100;
+/** Pausenfaktor */
+unsigned int mmslDelayFactor = 1;
 static int mmslFrequency = 800;
 static int mmslSmoothen = 0;
 static int mmslSystem = MMSL_NONE;
@@ -375,6 +377,27 @@ void mmslPlayPauseDits(unsigned int dits)
   }
 }
 
+/** Erzeugt eine Pause zwischen zwei Worten.
+ */
+void mmslPlayPauseWord()
+{
+  switch (mmslSystem)
+  {
+    case MMSL_SPEAKER:
+      AlarmSet(4 * mmslDelayFactor * mmslDotLength);
+      AlarmWait();
+      break;
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA    
+      playBufferAlsa(4 * mmslDelayFactor * mmslDotLength, false);
+#endif
+      break;
+    default:
+      break;
+  }
+}
+
+
 /** Erzeugt einen Ton von der Länge eines Punktes.
 */
 void dit(void)
@@ -424,6 +447,16 @@ void mmslSetBpm(unsigned int bpm)
 unsigned int mmslGetBpm()
 {
   return mmslBpm;
+}
+
+void mmslSetDelayFactor(unsigned int factor)
+{
+  mmslDelayFactor = factor;
+}
+
+unsigned int mmslGetDelayFactor()
+{
+  return mmslDelayFactor;
 }
 
 const map<int, string> cwCode = {
@@ -502,4 +535,42 @@ int mmslMorseChar(int signID)
   }
 
   return MM_FALSE;
+}
+
+/** Gibt alle bekannten Zeichen des Strings in Morse-Code aus.
+@param msg Der zu gebende Text
+@return 1 wenn unbekannte Zeichen enthalten waren (Fehler), 0 sonst
+*/
+int mmslMorseWord(const string &msg)
+{
+  int res = MM_FALSE;
+  if (mmslBpm > 200)
+  {
+    // loop over x times buffer length
+    //  renderFullWord
+    ;
+  }
+  else
+  {
+    // Einzelne Zeichen ausgeben
+    unsigned int slen = msg.size();
+    for (unsigned int scnt = 0; scnt < slen; ++scnt)
+    {
+      map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
+      if (c_it == cwCode.end())
+        continue;
+      for (unsigned int i = 0; i < c_it->second.size(); ++i)
+      {
+        if (c_it->second[i] == '.')
+          dit();
+        else
+          dah();
+        mmslPlayPauseDits(1);
+      }
+      mmslPlayPauseDits(2);
+      mmslPlayPause((mmslDelayFactor-1) * 3);
+    }
+  }
+  
+  return res;
 }
