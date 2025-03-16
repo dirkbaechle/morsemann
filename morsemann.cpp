@@ -563,6 +563,7 @@ void outputMorseCode(void)
     else
     {
       mmslMorseWord(lastWord);
+      mmslDrainSoundStream();
       writeString(lastWord);
       if (kbhit() != 0)
       {
@@ -572,9 +573,11 @@ void outputMorseCode(void)
           error = MM_TRUE;
         }
         while (kbhit() != 0) getch();
+        mmslPrepareSoundStream();
       }
       else
       {
+        mmslPrepareSoundStream();
         mmslPlayPauseWord();
       }
     }

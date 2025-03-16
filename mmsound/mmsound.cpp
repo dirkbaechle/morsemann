@@ -67,6 +67,9 @@ bool initAlsa(const std::string& device)
 		return false;
 	}
 
+  // Ensure that all audio buffer are written before returning
+  // from e.g. a drain (snd_pcm_drain()).
+  snd_pcm_nonblock(pcm_handle, 0);
   return true;
 }
 
