@@ -1,6 +1,8 @@
 #include "mmsound.h"
 #include "beep.h"
 #include "alarm.h"
+#include "global.h"
+#include <map>
 
 #ifdef HAVE_ALSA
 #include <cmath>
@@ -13,6 +15,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::string;
+using std::map;
 
 /** Geschwindigkeit in Buchstaben pro Minute (bpm) */
 static unsigned int mmslBpm = 60;
@@ -372,6 +375,25 @@ void mmslPlayPauseDits(unsigned int dits)
   }
 }
 
+/** Erzeugt einen Ton von der Länge eines Punktes.
+*/
+void dit(void)
+{
+  mmslPlayToneDits(1);
+  mmslPlayPauseDits(1);
+}
+
+/** Erzeugt einen Ton von der Länge eines Striches
+(= Drei Punkte).
+*/
+void dah(void)
+{
+  mmslPlayToneDits(3);
+  mmslPlayPauseDits(1);
+}
+
+/** Gibt einen Fehlerton aus.
+*/
 void mmslPlayErrorTone()
 {
   switch (mmslSystem)
@@ -402,4 +424,82 @@ void mmslSetBpm(unsigned int bpm)
 unsigned int mmslGetBpm()
 {
   return mmslBpm;
+}
+
+const map<int, string> cwCode = {
+{97, ".-"},      // a
+{98, "-..."},    // b
+{99, "-.-."},    // c
+{100, "-.."},    // d
+{101, "."},      // e
+{102, "..-."},   // f
+{103, "--."},    // g
+{104, "...."},   // h
+{105, ".."},     // i
+{106, ".---"},   // j
+{107, "-.-"},    // k
+{108, ".-.."},   // l
+{109, "--"},     // m
+{110, "-."},     // n
+{111, "---"},    // o
+{112, ".--."},   // p
+{113, "--.-"},   // q
+{114, ".-."},    // r
+{115, "..."},    // s
+{116, "-"},      // t
+{117, "..-"},    // u
+{118, "...-"},   // v
+{119, ".--"},    // w
+{120, "-..-"},   // x
+{121, "-.--"},   // y
+{122, "--.."},   // z
+{48, "-----"},   // 0
+{49, ".----"},   // 1
+{50, "..---"},   // 2
+{51, "...--"},   // 3
+{52, "....-"},   // 4
+{53, "....."},   // 5
+{54, "-...."},   // 6
+{55, "--..."},   // 7
+{56, "---.."},   // 8
+{57, "----."},   // 9
+// Satzzeichen
+{44, "--..--"},  // ,
+{46, ".-.-.-"},  // .
+{63, "..--.."},  // ?
+{47, "-..-."},   // !
+{61, "-...-"},   // =
+// Start der Zeichen die wir normalerweise nicht im Morsetext ausgeben
+{33, "-.-.--"},  // !
+{34, ".-..-."},  // "
+{36, "...-..-"}, // $
+{39, ".----."},  // '
+{40, "-.--."},   // (
+{41, "-.--.-"},  // )
+{43, ".-.-."},   // +
+{45, "-....-"},  // -
+{58, "---..."},  // :
+{59, "-.-.-."},  // ;
+{64, ".--.-."},  // @
+{96, ".-----."}};// `
+
+/** Gibt die Zeichen und den dazugehörigen Morse-Code aus.
+@param signID Das auszugebende Zeichen
+@return 1 wenn das Zeichen unbekannt ist (Fehler), 0 sonst
+*/
+int mmslMorseChar(int signID)
+{
+  map<int, string>::const_iterator c_it = cwCode.find(signID);
+  if (c_it == cwCode.end())
+    return MM_TRUE;
+  for (unsigned int i = 0; i < c_it->second.size(); ++i)
+  {
+    if (c_it->second[i] == '.')
+      dit();
+    else
+      dah();
+    mmslPlayPauseDits(1);
+  }
+
+  return MM_FALSE;
 }

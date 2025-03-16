@@ -25,6 +25,7 @@ extern void mmslPlayPause(unsigned int duration);
 extern void mmslPlayToneDits(unsigned int dits);
 extern void mmslPlayPauseDits(unsigned int dits);
 extern void mmslPlayErrorTone();
+extern int mmslMorseChar(int signID);
 
 #endif
 

@@ -18,6 +18,7 @@ RANLIB = ranlib
 
 TARGET = mmsound
 AROBJS = beep.o alarm.o mmsound.o
+CINCLUDES += -I..
 CXXFLAGS += -DLINUXSIGS
 
 all: lib$(TARGET).a
