@@ -73,9 +73,16 @@ bool initAlsa(const std::string& device)
   return true;
 }
 
-void playBufferAlsa(unsigned int duration, bool sound = true)
+
+unsigned long int durationToSamples(unsigned long int msecDuration)
 {
-  unsigned long int nbSamples = rate * channels * (((float) duration) / 1000.0);
+  unsigned long int nbSamples = rate * channels * (((float) msecDuration) / 1000.0);
+
+  return nbSamples;
+}
+
+void playBufferAlsa(unsigned long int nbSamples, bool sound = true)
+{
   unsigned long int sample = 0;
   if (nbSamples > 0)
   {
@@ -136,6 +143,47 @@ void renderFrequencyToBuffer(int frequency)
   }
 }
 
+void clearGlobalBuffer()
+{
+  for (int i = 0; i < BUF_LEN; ++i) {
+      g_buffer[i] = (int) 0;
+  }
+}
+
+unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
+{
+  int amp = 100;
+  int amplitude = (int)((double) amp * 327.67);
+
+  float t = ((float) 2 * M_PI * mmslFrequency) / (rate * channels);
+  unsigned long int ditSamples = durationToSamples(mmslDotLength);
+  unsigned long int endOfChar = start;
+  unsigned long int toGo = 0;
+  unsigned long int currentSample = 0;
+  for (size_t pos = 0; pos < cw.size(); ++pos)
+  {
+    if (cw[pos] == '.')
+    {
+      // render a point
+      toGo = ditSamples;
+    }
+    else
+    {
+      // render a dash
+      toGo = 3 * ditSamples;
+    }
+    for (currentSample = endOfChar; currentSample < (endOfChar + toGo); ++currentSample)
+    {
+      g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+    }
+    endOfChar += toGo;
+    // add a pause
+    endOfChar += ditSamples;
+  }
+
+  return endOfChar;
+}
+
 //
 // Smoothstep functions (generalized form), derived from
 // https://en.wikipedia.org/wiki/Smoothstep
@@ -165,6 +213,18 @@ float generalSmoothStep(unsigned int N, float x)
               pow(x, N + n + 1);
   return result;
 }
+
+
+// TODO write functions that map the intro and outro area of each morse
+// dit/dah to the interval [0.0, 1.0] and then apply either
+// 
+// generalSmoothStep(1, x) = -2x^3 + 3x^2
+//
+// or
+//
+// generalSmoothStep(2, x) = 6x^5 - 15x^4 + 10x^3
+
+
 
 #endif
 
@@ -302,7 +362,7 @@ void mmslSetFrequency(int frequency)
   mmslFrequency = frequency;
 }
 
-void mmslPlayTone(unsigned int duration)
+void mmslPlayTone(unsigned long int duration)
 {
   switch (mmslSystem)
   {
@@ -312,25 +372,7 @@ void mmslPlayTone(unsigned int duration)
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
-      playBufferAlsa(duration);
-#endif
-      break;
-    default:
-      break;
-  }
-}
-
-void mmslPlayToneDits(unsigned int dits)
-{
-  switch (mmslSystem)
-  {
-    case MMSL_SPEAKER:
-      Beep((int) dits * mmslDotLength, 10, mmslFrequency);
-      BeepWait();
-      break;
-    case MMSL_ALSA:
-#ifdef HAVE_ALSA
-      playBufferAlsa(dits * mmslDotLength);
+      playBufferAlsa(durationToSamples(duration));
 #endif
       break;
     default:
@@ -341,7 +383,7 @@ void mmslPlayToneDits(unsigned int dits)
 /** Erzeugt eine Pause von \a duration Millisekunden.
 @param duration Anzahl der Millisekunden
 */
-void mmslPlayPause(unsigned int duration)
+void mmslPlayPause(unsigned long int duration)
 {
   switch (mmslSystem)
   {
@@ -351,28 +393,7 @@ void mmslPlayPause(unsigned int duration)
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA    
-      playBufferAlsa(duration, false);
-#endif
-      break;
-    default:
-      break;
-  }
-}
-
-/** Erzeugt eine Pause in der Länge von \a dits Punkten.
-@param dits Anzahl der Punkte 
-*/
-void mmslPlayPauseDits(unsigned int dits)
-{
-  switch (mmslSystem)
-  {
-    case MMSL_SPEAKER:
-      AlarmSet(dits * mmslDotLength);
-      AlarmWait();
-      break;
-    case MMSL_ALSA:
-#ifdef HAVE_ALSA    
-      playBufferAlsa(dits * mmslDotLength, false);
+      playBufferAlsa(durationToSamples(duration), false);
 #endif
       break;
     default:
@@ -392,7 +413,7 @@ void mmslPlayPauseWord()
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA    
-      playBufferAlsa(4 * mmslDelayFactor * mmslDotLength, false);
+      playBufferAlsa(durationToSamples(4 * mmslDelayFactor * mmslDotLength), false);
 #endif
       break;
     default:
@@ -400,23 +421,6 @@ void mmslPlayPauseWord()
   }
 }
 
-
-/** Erzeugt einen Ton von der Länge eines Punktes.
-*/
-void dit(void)
-{
-  mmslPlayToneDits(1);
-  mmslPlayPauseDits(1);
-}
-
-/** Erzeugt einen Ton von der Länge eines Striches
-(= Drei Punkte).
-*/
-void dah(void)
-{
-  mmslPlayToneDits(3);
-  mmslPlayPauseDits(1);
-}
 
 /** Gibt einen Fehlerton aus.
 */
@@ -519,27 +523,6 @@ const map<int, string> cwCode = {
 {64, ".--.-."},  // @
 {96, ".-----."}};// `
 
-/** Gibt die Zeichen und den dazugehörigen Morse-Code aus.
-@param signID Das auszugebende Zeichen
-@return 1 wenn das Zeichen unbekannt ist (Fehler), 0 sonst
-*/
-int mmslMorseChar(int signID)
-{
-  map<int, string>::const_iterator c_it = cwCode.find(signID);
-  if (c_it == cwCode.end())
-    return MM_TRUE;
-  for (unsigned int i = 0; i < c_it->second.size(); ++i)
-  {
-    if (c_it->second[i] == '.')
-      dit();
-    else
-      dah();
-    mmslPlayPauseDits(1);
-  }
-
-  return MM_FALSE;
-}
-
 /** Gibt alle bekannten Zeichen des Strings in Morse-Code aus.
 @param msg Der zu gebende Text
 @return 1 wenn unbekannte Zeichen enthalten waren (Fehler), 0 sonst
@@ -547,33 +530,70 @@ int mmslMorseChar(int signID)
 int mmslMorseWord(const string &msg)
 {
   int res = MM_FALSE;
-  if (mmslBpm > 200)
+  unsigned int slen = msg.size();
+
+  switch (mmslSystem)
   {
-    // loop over x times buffer length
-    //  renderFullWord
-    ;
-  }
-  else
-  {
-    // Einzelne Zeichen ausgeben
-    unsigned int slen = msg.size();
-    for (unsigned int scnt = 0; scnt < slen; ++scnt)
-    {
-      map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
-      if (c_it == cwCode.end())
-        continue;
-      for (unsigned int i = 0; i < c_it->second.size(); ++i)
+    case MMSL_SPEAKER:
+      // Einzelne Zeichen ausgeben
+      for (unsigned int scnt = 0; scnt < slen; ++scnt)
       {
-        if (c_it->second[i] == '.')
-          dit();
-        else
-          dah();
-        mmslPlayPauseDits(1);
+        map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
+        if (c_it == cwCode.end())
+        {
+          res = MM_TRUE;
+          continue;
+        }
+
+        for (size_t i = 0; i < c_it->second.size(); ++i)
+        {
+          if (c_it->second[i] == '.')
+            mmslPlayTone(mmslDotLength);
+          else
+            mmslPlayTone(3 * mmslDotLength);
+          mmslPlayPause(mmslDotLength);
+        }
+        // 2 Dits Pause ...
+        mmslPlayPause(2 * mmslDotLength);
+        // plus ggf. die Verlängerung durch den delay-Faktor.
+        if (mmslDelayFactor > 1)
+          mmslPlayPause((mmslDelayFactor - 1) * 3 * mmslDotLength);
       }
-      mmslPlayPauseDits(2);
-      mmslPlayPause((mmslDelayFactor-1) * 3);
-    }
+
+      break;
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      if (mmslBpm > 250)
+      {
+        // loop over x times buffer length
+        //  renderFullWord
+        ;
+      }
+      else
+      {
+        // Einzelne Zeichen ausgeben
+        for (unsigned int scnt = 0; scnt < slen; ++scnt)
+        {
+          map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
+          if (c_it == cwCode.end())
+          {
+            res = MM_TRUE;
+            continue;
+          }
+
+          clearGlobalBuffer();
+          unsigned long int endOfChar = renderMorseCharAt(c_it->second, (unsigned long int) 0);
+          playBufferAlsa(endOfChar);
+          // 2 Dits Pause ...
+          playBufferAlsa(durationToSamples(2 * mmslDotLength), false);
+          // plus ggf. die Verlängerung durch den delay-Faktor.
+          if (mmslDelayFactor > 1)
+            playBufferAlsa(durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength), false);
+        }
+      }
+#endif
+      break;
   }
-  
+
   return res;
 }

@@ -141,23 +141,6 @@ const map<int, string> cwChar = {
 {64, "@"},
 {96, "`"}};
 
-/** Gibt die Zeichen und den dazugehörigen Morse-Code aus.
-@param signID Das auszugebende Zeichen
-@return 1 wenn das Zeichen unbekannt ist (Fehler), 0 sonst
-*/
-int outputSign(int signID)
-{
-  if (MM_TRUE == mmslMorseChar(signID))
-    return MM_TRUE;
-  mmslPlayPauseDits(2);
-  map<int, string>::const_iterator c_it = cwChar.find(signID);
-  if (c_it == cwChar.end())
-      return MM_TRUE;
-
-  writeString(c_it->second);
-  return MM_FALSE;
-}
-
 /** Die Endnachricht.
 */
 void byeMessage(void)
@@ -165,30 +148,21 @@ void byeMessage(void)
   clrscr();
   gotoxy(centerX - 6, centerY);
   mmslSetFrequency((mmRandom(5) + 6) * 100);
-  mmslSetBpm(160);
+  mmslSetDelayFactor(1);
+  mmslSetBpm(140);
   mmslPrepareSoundStream();
-  // TODO implement playMorseWord
-  outputSign('7');
-  mmslPlayPauseDits(2);
-  outputSign('3');
-  mmslPlayPauseDits(6);
-  writeChar(' ');
-  outputSign('d');
-  mmslPlayPauseDits(2);
-  outputSign('e');
-  mmslPlayPauseDits(6);
-  writeChar(' ');
-  outputSign('d');
-  mmslPlayPauseDits(2);
-  outputSign('l');
-  mmslPlayPauseDits(2);
-  outputSign('9');
-  mmslPlayPauseDits(2);
-  outputSign('o');
-  mmslPlayPauseDits(2);
-  outputSign('b');
-  mmslPlayPauseDits(2);
-  outputSign('n');
+  writeString("73 ");
+  mmslMorseWord("73");
+  mmslPlayPauseWord();
+  mmslDrainSoundStream();
+  writeString("de ");
+  mmslPrepareSoundStream();
+  mmslMorseWord("de");
+  mmslPlayPauseWord();
+  mmslDrainSoundStream();
+  writeString("dl9obn");
+  mmslPrepareSoundStream();
+  mmslMorseWord("dl9obn");
   mmslPlayPause(500);
 }
 
@@ -614,8 +588,8 @@ void outputMorseCode(void)
     while (kbhit() != 0) getch();
   }
 
-  writeString("\n\r");
-  outputSign('+');
+  writeString("\n\r+");
+  mmslMorseWord("+");
   if (confirmChars != 0)
   {
     writeString("   (");

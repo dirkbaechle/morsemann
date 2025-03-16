@@ -22,13 +22,10 @@ extern unsigned int mmslGetDelayFactor();
 extern void mmslSetSmoothening(int smoothen);
 extern void mmslSetFrequency(int frequency);
 
-extern void mmslPlayTone(unsigned int duration);
-extern void mmslPlayPause(unsigned int duration);
-extern void mmslPlayToneDits(unsigned int dits);
-extern void mmslPlayPauseDits(unsigned int dits);
+extern void mmslPlayTone(unsigned long int duration);
+extern void mmslPlayPause(unsigned long int duration);
 extern void mmslPlayPauseWord();
 extern void mmslPlayErrorTone();
-extern int mmslMorseChar(int signID);
 extern int mmslMorseWord(const std::string &msg);
 
 #endif
