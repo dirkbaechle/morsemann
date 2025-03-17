@@ -594,6 +594,9 @@ const map<int, string> cwCode = {
 {64, ".--.-."},  // @
 {96, ".-----."}};// `
 
+// Maximale Anzahl der Elemente in einem Morsezeichen
+#define MAX_CHAR_ELEMENTS 7
+
 /** Gibt alle bekannten Zeichen des Strings in Morse-Code aus.
 @param msg Der zu gebende Text
 @return 1 wenn unbekannte Zeichen enthalten waren (Fehler), 0 sonst
@@ -634,11 +637,31 @@ int mmslMorseWord(const string &msg)
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
-      if (mmslBpm > 250)
+      // Maximale Länge des gesamten Wortes bei aktueller BpM Geschwindigkeit in Dots...
+      unsigned long int elements = (slen * MAX_CHAR_ELEMENTS * 4) + (slen - 1) * 2;
+      // ...und in Samples.
+      unsigned long int wordDuration = durationToSamples(elements * mmslDotLength);
+      unsigned long int endOfChar = 0;
+      if (wordDuration < BUF_LEN)
       {
-        // loop over x times buffer length
-        //  renderFullWord
-        ;
+        clearGlobalBuffer();
+        for (unsigned int scnt = 0; scnt < slen; ++scnt)
+        {
+          map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
+          if (c_it == cwCode.end())
+          {
+            res = MM_TRUE;
+            continue;
+          }
+
+          endOfChar = renderMorseCharAt(c_it->second, endOfChar);
+          // 2 Dits Pause ...
+          endOfChar += durationToSamples(2 * mmslDotLength);
+          // plus ggf. die Verlängerung durch den delay-Faktor.
+          if (mmslDelayFactor > 1)
+            endOfChar += durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength);
+        }
+        playBufferAlsa(endOfChar);
       }
       else
       {
