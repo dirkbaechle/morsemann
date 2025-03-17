@@ -23,8 +23,10 @@ static unsigned int mmslBpm = 60;
 static unsigned int mmslDotLength = 100;
 /** Pausenfaktor */
 unsigned int mmslDelayFactor = 1;
+/** Rampe für das Formen (Smoothing) der Morsezeichen in ms */
+unsigned long int rampLength = 2;
 static int mmslFrequency = 800;
-static int mmslSmoothen = 0;
+static int mmslSmoothen = 3;
 static int mmslSystem = MMSL_NONE;
 
 #ifdef HAVE_ALSA
@@ -150,6 +152,41 @@ void clearGlobalBuffer()
   }
 }
 
+// Smoothing function, f(x) = sin(PI/2*x)^2 
+float smoothSinSquared(float x) 
+{
+  if (x <= 0.0)
+    return 0.0;
+  if (x >= 1.0)
+    return 1.0;
+  return pow(sin(M_PI*x/2.0), 2);
+}
+
+//
+// Smoothstep functions, see also
+// https://en.wikipedia.org/wiki/Smoothstep
+//
+
+// Smoothstep, version A, f(x) = -2x^3 + 3x^2
+float smoothStep(float x) 
+{
+  if (x <= 0.0)
+    return 0.0;
+  if (x >= 1.0)
+    return 1.0;
+  return x * x * (3.0f - 2.0f * x);
+}
+
+// Smoothstep, version B, f(x) = -2x^3 + 3x^2
+float smootherStep(float x) 
+{
+  if (x <= 0.0)
+    return 0.0;
+  if (x >= 1.0)
+    return 1.0;
+  return x * x * x * (x * (6.0f * x - 15.0f) + 10.0f);
+}
+
 unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
 {
   int amp = 100;
@@ -160,6 +197,8 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
   unsigned long int endOfChar = start;
   unsigned long int toGo = 0;
   unsigned long int currentSample = 0;
+  unsigned long int smoothSamples = durationToSamples(rampLength);
+  float x = 0.0;
   for (size_t pos = 0; pos < cw.size(); ++pos)
   {
     if (cw[pos] == '.')
@@ -172,46 +211,78 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
       // render a dash
       toGo = 3 * ditSamples;
     }
-    for (currentSample = endOfChar; currentSample < (endOfChar + toGo); ++currentSample)
+    switch (mmslSmoothen)
     {
-      g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+      case 1: // Smoothen with f(x) = -2x^3 + 3x^2
+              // Smoothen IN
+              for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
+              {
+                x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
+              }
+              // Normal data
+              for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+              {
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+              }
+              // Smoothen OUT
+              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              {
+                x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
+              }
+              break;
+      case 2: // Smoothen with f(x) = 6x^5 - 15x^4 + 10x^3
+              // Smoothen IN
+              for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
+              {
+                x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
+              }
+              // Normal data
+              for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+              {
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+              }
+              // Smoothen OUT
+              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              {
+                x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
+              }
+              break;
+      case 3: // Smoothen with f(x) = sin(PI/2*x)^2
+              // Smoothen IN
+              for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
+              {
+                x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+              }
+              // Normal data
+              for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+              {
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+              }
+              // Smoothen OUT
+              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              {
+                x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+              }
+              break;
+      default: // No smoothing at all
+              for (currentSample = endOfChar; currentSample < (endOfChar + toGo); ++currentSample)
+              {
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+              }
+              break;
     }
-    endOfChar += toGo;
+  endOfChar += toGo;
     // add a pause
     endOfChar += ditSamples;
   }
 
   return endOfChar;
-}
-
-//
-// Smoothstep functions (generalized form), derived from
-// https://en.wikipedia.org/wiki/Smoothstep
-//
-
-// Returns binomial coefficient without explicit use of factorials,
-// which can't be used with negative integers
-unsigned long int pascalTriangle(unsigned int a, unsigned int b)
-{
-  unsigned long int result = 1; 
-  for (unsigned long int i = 0; i < b; ++i)
-    result *= (a - i) / (i + 1);
-  return result;
-}
-
-// Generalized smoothstep
-float generalSmoothStep(unsigned int N, float x) 
-{
-  if (x < 0.0)
-    return 0.0;
-  if (x >= 1.0)
-    return 1.0;
-  float result = 0;
-  for (unsigned int n = 0; n <= N; ++n)
-    result += pascalTriangle(-N - 1, n) *
-              pascalTriangle(2 * N + 1, N - n) *
-              pow(x, N + n + 1);
-  return result;
 }
 
 
