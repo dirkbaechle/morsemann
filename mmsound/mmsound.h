@@ -17,14 +17,18 @@ extern bool mmslSoundSystemAvailable(int system);
 
 extern void mmslSetBpm(unsigned int bpm);
 extern unsigned int mmslGetBpm();
-extern void mmslSetSmoothening(int smoothen);
-extern void mmslSetFrequency(int frequency);
+extern void mmslSetDelayFactor(unsigned int factor);
+extern unsigned int mmslGetDelayFactor();
+extern void mmslSetSmoothening(unsigned int smoothen);
+extern unsigned int mmslGetSmoothening();
+extern void mmslSetFrequency(unsigned int frequency);
+extern unsigned int mmslGetFrequency();
 
-extern void mmslPlayTone(unsigned int duration);
-extern void mmslPlayPause(unsigned int duration);
-extern void mmslPlayToneDits(unsigned int dits);
-extern void mmslPlayPauseDits(unsigned int dits);
+
+extern void mmslPlayTone(unsigned long int duration);
+extern void mmslPlayPause(unsigned long int duration);
+extern void mmslPlayPauseWord();
 extern void mmslPlayErrorTone();
+extern int mmslMorseWord(const std::string &msg);
 
 #endif
-

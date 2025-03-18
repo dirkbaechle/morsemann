@@ -1,11 +1,11 @@
-# Makefile for/für ``MorseMann Soundlib''
+# Makefile for/für ``MorseMann Wordlib''
 #
 # Available targets/Verfügbare ``Targets'':
 #   all, clean
 #
 
 # Your favourite C compiler/Ihr C-Kompiler
-CXX	= g++
+CC	= g++
 # Your favourite archiver (ar)/Ihr Archivierer (ar)
 AR = ar
 # Your favourite Ranlib (ranlib)/Ihr Ranlib-Programm (ranlib)
@@ -16,10 +16,9 @@ RANLIB = ranlib
 # Ab dieser Zeile bitte nichts mehr ändern!!!
 #
 
-TARGET = mmsound
-AROBJS = beep.o alarm.o mmsound.o
-CINCLUDES += -I..
-CXXFLAGS += -DLINUXSIGS
+TARGET = mmword
+AROBJS = mmword.o
+CINCLUDES = -DLINUX
 
 all: lib$(TARGET).a
 	
@@ -30,9 +29,8 @@ lib$(TARGET).a: $(AROBJS)
 	$(RANLIB) lib$(TARGET).a
 
 %.o: %.cpp %.h
-	$(CXX) $< -c -o $@ $(CXXFLAGS) $(CINCLUDES)
+	$(CC) $< -c -I.. -o $@ $(CINCLUDES)
 
 clean:
 	rm -f lib$(TARGET).a
 	rm -f *.o
-

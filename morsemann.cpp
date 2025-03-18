@@ -47,13 +47,15 @@ von Morsezeichen (CW).
 
 #include "mmsound.h"
 #include "mmscreen.h"
+#include "mmword.h"
+#include "global.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <map>
 #include <string>
 
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
 #include <ncurses.h>
 #include <time.h>
@@ -68,9 +70,6 @@ using std::string;
 
 /*---------------------------------------------------- Const values */
 
-const int MM_TRUE = 1;
-const int MM_FALSE = 0;
-
 const int GROUP_WIDTH = 15;
 const int OPT_LEFT_WIDTH = 19;
 const int OPT_RIGHT_WIDTH = 8;
@@ -78,171 +77,69 @@ const int MENU_WIDTH = 4;
 
 /*------------------------------------------------ Global variables */
 
-/** Pausenfaktor */
-int delayFactor = 1;
-/** Auswahl der Zeichenmenge (1-8) */
-int selectedCharGroup = 1;
-/** Art der Wortgruppen (fest=MM_FALSE oder variabel=MM_TRUE) */
-int variableWords = 0;
-/** Länge der festen Wortgruppen */
-int fixedWordLength = 5;
-/** Bestätigung jedes einzelnen Zeichens? (0=nein, 1=Buchstabe, 2=Wort) */
-int confirmChars = 0;
 /** Gesamtzahl der zu gebenden Buchstaben */
 int totalLength = 200;
 /** Gesamtzahl der gemachten Fehler */
 int errorCount = 0;
-/** Zeichenmenge als String (Auswahl = 8) */
-char charSet[255];
-/** Länge des Zeichenmenge-Strings */
-int charSetLength = 0;
-/** Array mit den Strings für die Zeichenauswahl */
-char groupString[8][50] = {"Alle Zeichen",
-			   "Nur Buchstaben",
-			   "Nur Zahlen",
-			   "Nur Sonderzeichen",
-			   "Buchstaben und Zahlen",
-			   "Buchstaben und Sonderzeichen",
-			   "Zahlen und Sonderzeichen",
-			   "Zeichen eingeben"};
 
 /*--------------------------------------------------- Functions */
 
-/** Erzeugt einen Ton von der Länge eines Punktes.
-*/
-void dit(void)
-{
-  mmslPlayToneDits(1);
-  mmslPlayPauseDits(1);
-}
-
-/** Erzeugt einen Ton von der Länge eines Striches
-(= Drei Punkte).
-*/
-void dah(void)
-{
-  mmslPlayToneDits(3);
-  mmslPlayPauseDits(1);
-}
-
-/** Gibt einen Fehlerton aus.
-*/
-void errorTone(void)
-{
-  mmslPlayErrorTone();
-}
-
-/** Erzeugt eine Zufallszahl im Bereich von 0 bis \a maxNumber minus
-1.
-@param maxNumber Anzahl der möglichen Zufallszahlen
-@return Die Zufallszahl
-*/
-int mmRandom(int maxNumber)
-{
-  return ((int) (maxNumber*1.0*random()/(RAND_MAX+1.0)));
-}
-
-/** Gibt das Zeichen aus und fragt es vorher eventuell ab.
-@param b Das zu schreibende Zeichen
-@return 1 wenn durch ESC abgebrochen, 0 sonst
-*/
-int writeSign(char b)
-{
-  keyChar letter = '0';
-
-  if (confirmChars == 1)
-  {
-    /* Mit Abfrage */
-    letter = getch();
-    if (letter == static_cast<keyChar>(b))
-    {
-      /* Buchstabe richtig */
-      textModusNormal();
-      writeChar(b);
-      mmslPrepareSoundStream();
-    }
-    else
-    {
-      if (letter == KEY_BACKSPACE) return(MM_TRUE);
-      /* Buchstabe falsch */
-      textModusError();
-      writeChar(b);
-      textModusNormal();
-      mmslPrepareSoundStream();
-      errorTone();
-      ++errorCount;
-    }
-  }
-  else
-  {
-    /* Keine Abfrage? */
-    if (confirmChars == 0)
-      writeChar(b);
-    /* Bei Abfrage von ganzen Wörtern (confirmChars == 2) werden die */
-    /* Buchstaben zusammen in `outputMorseCode' ausgegeben... */
-  }
-
-  return(MM_FALSE);
-}
-
-const std::map<int, string> cwCode = {{97, ".-"},
-{98, "-..."}};
-
-const std::map<int, char> cwChar = {{97, 'a'},
-{98, 'b'}};
-
-/** Gibt die Zeichen und den dazugehörigen Morse-Code aus.
-@param signID Das auszugebende Zeichen
-@return 1 wenn durch ESC abgebrochen, 0 sonst
-*/
-int outputSign(int signID)
-{
-  switch (signID)
-  {
-    case 97:dit();dah();return(writeSign('a'));
-    case 98:dah();dit();dit();dit();return(writeSign('b'));
-    case 99:dah();dit();dah();dit();return(writeSign('c'));
-    case 100:dah();dit();dit();return(writeSign('d'));
-    case 101:dit();return(writeSign('e'));
-    case 102:dit();dit();dah();dit();return(writeSign('f'));
-    case 103:dah();dah();dit();return(writeSign('g'));
-    case 104:dit();dit();dit();dit();return(writeSign('h'));
-    case 105:dit();dit();return(writeSign('i'));
-    case 106:dit();dah();dah();dah();return(writeSign('j'));
-    case 107:dah();dit();dah();return(writeSign('k'));
-    case 108:dit();dah();dit();dit();return(writeSign('l'));
-    case 109:dah();dah();return(writeSign('m'));
-    case 110:dah();dit();return(writeSign('n'));
-    case 111:dah();dah();dah();return(writeSign('o'));
-    case 112:dit();dah();dah();dit();return(writeSign('p'));
-    case 113:dah();dah();dit();dah();return(writeSign('q'));
-    case 114:dit();dah();dit();return(writeSign('r'));
-    case 115:dit();dit();dit();return(writeSign('s'));
-    case 116:dah();return(writeSign('t'));
-    case 117:dit();dit();dah();return(writeSign('u'));
-    case 118:dit();dit();dit();dah();return(writeSign('v'));
-    case 119:dit();dah();dah();return(writeSign('w'));
-    case 120:dah();dit();dit();dah();return(writeSign('x'));
-    case 121:dah();dit();dah();dah();return(writeSign('y'));
-    case 122:dah();dah();dit();dit();return(writeSign('z'));
-    case 48:dah();dah();dah();dah();dah();return(writeSign('0'));
-    case 49:dit();dah();dah();dah();dah();return(writeSign('1'));
-    case 50:dit();dit();dah();dah();dah();return(writeSign('2'));
-    case 51:dit();dit();dit();dah();dah();return(writeSign('3'));
-    case 52:dit();dit();dit();dit();dah();return(writeSign('4'));
-    case 53:dit();dit();dit();dit();dit();return(writeSign('5'));
-    case 54:dah();dit();dit();dit();dit();return(writeSign('6'));
-    case 55:dah();dah();dit();dit();dit();return(writeSign('7'));
-    case 56:dah();dah();dah();dit();dit();return(writeSign('8'));
-    case 57:dah();dah();dah();dah();dit();return(writeSign('9'));
-    case 44:dah();dah();dit();dit();dah();dah();return(writeSign(','));
-    case 46:dit();dah();dit();dah();dit();dah();return(writeSign('.'));
-    case 63:dit();dit();dah();dah();dit();dit();return(writeSign('?'));
-    case 47:dah();dit();dit();dah();dit();return(writeSign('/'));
-    case 61:dah();dit();dit();dit();dah();return(writeSign('='));
-  }
-  return(MM_FALSE);
-}
+const map<int, string> cwChar = {
+{97, "a"},
+{98, "b"},
+{99, "c"},
+{100, "d"},
+{101, "e"},
+{102, "f"},
+{103, "g"},
+{104, "h"},
+{105, "i"},
+{106, "j"},
+{107, "k"},
+{108, "l"},
+{109, "m"},
+{110, "n"},
+{111, "o"},
+{112, "p"},
+{113, "q"},
+{114, "r"},
+{115, "s"},
+{116, "t"},
+{117, "u"},
+{118, "v"},
+{119, "w"},
+{120, "x"},
+{121, "y"},
+{122, "z"},
+{48, "0"},
+{49, "1"},
+{50, "2"},
+{51, "3"},
+{52, "4"},
+{53, "5"},
+{54, "6"},
+{55, "7"},
+{56, "8"},
+{57, "9"},
+// Satzzeichen
+{44, ","},
+{46, "."},
+{63, "?"},
+{47, "/"},
+{61, "="},
+// Start der Zeichen die wir normalerweise nicht im Morsetext ausgeben
+{33, "!"},
+{34, "\""},
+{36, "$"},
+{39, "'"},
+{40, "("},
+{41, ")"},
+{43, "+"},
+{45, "-"},
+{58, ":"},
+{59, ";"},
+{64, "@"},
+{96, "`"}};
 
 /** Die Endnachricht.
 */
@@ -251,90 +148,22 @@ void byeMessage(void)
   clrscr();
   gotoxy(centerX - 6, centerY);
   mmslSetFrequency((mmRandom(5) + 6) * 100);
-  mmslSetBpm(120);
+  mmslSetDelayFactor(1);
+  mmslSetBpm(140);
   mmslPrepareSoundStream();
-  outputSign('7');
-  mmslPlayPauseDits(2);
-  outputSign('3');
-  mmslPlayPauseDits(6);
-  writeChar(' ');
-  outputSign('d');
-  mmslPlayPauseDits(2);
-  outputSign('e');
-  mmslPlayPauseDits(6);
-  writeChar(' ');
-  outputSign('d');
-  mmslPlayPauseDits(2);
-  outputSign('l');
-  mmslPlayPauseDits(2);
-  outputSign('9');
-  mmslPlayPauseDits(2);
-  outputSign('o');
-  mmslPlayPauseDits(2);
-  outputSign('b');
-  mmslPlayPauseDits(2);
-  outputSign('n');
+  writeString("73 ");
+  mmslMorseWord("73");
+  mmslPlayPauseWord();
+  mmslDrainSoundStream();
+  writeString("de ");
+  mmslPrepareSoundStream();
+  mmslMorseWord("de");
+  mmslPlayPauseWord();
+  mmslDrainSoundStream();
+  writeString("dl9obn");
+  mmslPrepareSoundStream();
+  mmslMorseWord("dl9obn");
   mmslPlayPause(500);
-}
-
-/** Ermittelt den zugehörigen ANSI/ASCII-Kode des Zeichens mit
-der ID \a letterID.
-@param letterID ID des Zeichens
-@return ANSI/ASCII-Kode des Zeichens
-*/
-char mapToChar(int letterID)
-{
-  if ((letterID > 0) && (letterID < 27))
-    return ((char) letterID+96);
-  if ((letterID > 26) && (letterID < 37))
-    return ((char) letterID+21);
-  if (letterID == 37)
-    return ((char) 44);
-  if (letterID == 38)
-    return ((char) 46);
-  if (letterID == 39)
-    return ((char) 63);
-  if (letterID == 40)
-    return ((char) 47);
-  if (letterID == 41)
-    return ((char) 61);
-
-  return(0);
-}
-
-/** Bestimmt durch Zufall das nächste Zeichen aus dem eingegebenen String.
-@return Zeichen
-*/
-char charSetRandom(void)
-{
-  return charSet[mmRandom(charSetLength)];
-}
-
-/** Bestimmt durch Zufall das nächste Zeichen.
-@return Zeichen
-*/
-char signRandom(void)
-{
-  switch (selectedCharGroup)
-  {
-     case 1: return(mapToChar(mmRandom(41)+1));
-     case 2: return(mapToChar(mmRandom(26)+1));
-     case 3: return(mapToChar(mmRandom(10)+27));
-     case 4: return(mapToChar(mmRandom(5)+37));
-     case 5: return(mapToChar(mmRandom(36)+1));
-     case 6: if (mmRandom(2) == 0)
-	     {
-	       return(mapToChar(mmRandom(26)+1));
-	     }
-	     else
-	     {
-	       return(mapToChar(mmRandom(5)+37));
-	     }
-     case 7: return(mmRandom(15)+27);
-     case 8: return(charSetRandom());
-  }
-
-  return(0);
 }
 
 /** Liest einen String als Zeichenmenge ein.
@@ -362,7 +191,7 @@ void readCharSet(void)
       if (((b < 97) || (b > 122)) && ((b < 48) || (b > 57)) && (b != 44) && (b != 46) && (b != 47) && (b != 61) && (b != 63))
       {
         error = MM_TRUE;
-        errorTone();
+        mmslPlayErrorTone();
       }
     }
   } while ((charSetLength == 0) || (error == MM_TRUE));
@@ -391,7 +220,7 @@ void charGroupSelection(void)
   clrscr();
   writeSelection("Auswahl der Zeichen", centerX-10, centerY-5, 1, 2);
 
-  while ((b != KEY_BACKSPACE) && (b != 13))
+  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
   {
     charGroupMenu();
     b = getch();
@@ -429,7 +258,7 @@ void speedSelection(void)
   textModusSelect();
   unsigned int bpm = mmslGetBpm();
 
-  while ((b != KEY_BACKSPACE) && (b != 13))
+  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
   {
     gotoxy(centerX-3, centerY+1);
     if (bpm < 100)
@@ -485,7 +314,8 @@ void delaySelection(void)
 
   textModusSelect();
 
-  while ((b != KEY_BACKSPACE) && (b != 13))
+  unsigned int delayFactor = mmslGetDelayFactor();
+  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
   {
     gotoxy(centerX-5, centerY+1);
     writeNumber(delayFactor);
@@ -510,6 +340,7 @@ void delaySelection(void)
 
   textModusNormal();
 
+  mmslSetDelayFactor(delayFactor);
 }
 
 /** Eingabe der Gesamtanzahl der auszugebenden Buchstaben.
@@ -543,7 +374,7 @@ void optionsMenu(int akt)
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
   writeNumber(mmslGetBpm());
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
-  writeNumber(delayFactor);
+  writeNumber(mmslGetDelayFactor());
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
   writeNumber(totalLength);
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
@@ -560,9 +391,7 @@ void optionsMenu(int akt)
   {
     case 0: writeString("Nein");
             break;
-    case 1: writeString("Buchstaben");
-            break;
-    case 2: writeString("Worte");
+    case 1: writeString("Worte");
             break;
   }
 
@@ -591,46 +420,46 @@ void optionsSelection(void)
     optionsMenu(currentOption);
     b = getch();
 
-      /* Cursor hoch */
-      if (b == KEY_UP)
-      {
-        if (currentOption == 1) currentOption = 6;
-        else --currentOption;
-      }
+    /* Cursor hoch */
+    if (b == KEY_UP)
+    {
+      if (currentOption == 1) currentOption = 6;
+      else --currentOption;
+    }
 
-      /* Cursor runter */
-      if (b == KEY_DOWN)
-      {
-        if (currentOption == 6) currentOption = 1;
-        else ++currentOption;
-      }
+    /* Cursor runter */
+    if (b == KEY_DOWN)
+    {
+      if (currentOption == 6) currentOption = 1;
+      else ++currentOption;
+    }
 
-      /* Cursor rechts */
-      if (b == KEY_RIGHT)
+    /* Cursor rechts */
+    if (b == KEY_RIGHT)
+    {
+      if ((currentOption == 5) &&
+          (variableWords == MM_FALSE))
       {
-        if ((currentOption == 5) &&
-            (variableWords == MM_FALSE))
-      	{
-          if (fixedWordLength < 8) 
-            ++fixedWordLength;
-          else
-            fixedWordLength = 2;
-        } 
-      }
+        if (fixedWordLength < 8) 
+          ++fixedWordLength;
+        else
+          fixedWordLength = 2;
+      } 
+    }
 
-      /* Cursor links */
-      if (b == KEY_LEFT)
+    /* Cursor links */
+    if (b == KEY_LEFT)
+    {
+      if (currentOption == 5)
       {
-      	if (currentOption == 5)
-        {
-          if (fixedWordLength > 2) 
-            --fixedWordLength;
-          else
-            fixedWordLength = 8;
-        } 
-      }
+        if (fixedWordLength > 2) 
+          --fixedWordLength;
+        else
+          fixedWordLength = 8;
+      } 
+    }
 
-    if (b == 13)
+    if (b == ENTER_CHAR)
     {
       switch (currentOption)
       {
@@ -644,62 +473,11 @@ void optionsSelection(void)
           break;
         case 5: variableWords = 1 - variableWords;
           break;
-        case 6: if (confirmChars < 2)
-            ++confirmChars;
-                      else
-            confirmChars = 0;
+        case 6: confirmChars = 1 - confirmChars;
           break;
       }
     }
   }
-}
-
-/** Vergleicht die beiden Strings, gibt das richtige Wort
-\a lastWord aus und liefert die Anzahl der gemachten Fehler
-zurück.
-@param userWord Eingabe des Benutzers
-@param lastWord Das richtige Wort
-@return Anzahl der gemachten Fehler
-*/
-int compareStrings(char *userWord, char *lastWord)
-{
-  int pos = 0;
-  int errors = 0;
-
-  while (userWord[pos] != 0)
-  {
-    if (userWord[pos] != lastWord[pos])
-    {
-      textModusError();
-      writeChar(lastWord[pos]);
-      ++errors;
-      textModusNormal();
-    }
-    else
-    {
-      writeChar(lastWord[pos]);
-    }
-    ++pos;
-  }
-
-  /* Sind noch Zeichen übrig? */
-  if (lastWord[pos] != 0)
-  {
-    textModusError();
-    while (lastWord[pos] != 0)
-    {
-      writeChar(lastWord[pos]);
-      ++pos;
-      ++errors;
-    }
-    textModusNormal();
-
-  }
-
-  if (errors > 0)
-    errorTone();
-
-  return errors;
 }
 
 /** Ausgabe der Morsezeichen, entsprechend der Optionen.
@@ -707,17 +485,17 @@ int compareStrings(char *userWord, char *lastWord)
 void outputMorseCode(void)
 {
   int currentLength = 0;
-  int wordLength = fixedWordLength;
-  int charCount = 0;
   int lineCount = 0;
   int lineNumber = 0;
   int posX = 1;
   int posY = 1;
-  char lastSign = 0;
-  char lastWord[10];
-  char userWord[10];
+  string lastWord;
+  string userWord;
   int error = MM_FALSE;
+  int errors = 0;
   keyChar b = '0';
+  unsigned int bpm = 0;
+  unsigned int tone = 0;
 
   clrscr();
   refresh();
@@ -726,80 +504,118 @@ void outputMorseCode(void)
 
   errorCount = 0;
 
-  if (variableWords == MM_TRUE)
-    wordLength = mmRandom(6) + 3;
-
-  lastWord[0] = 0;
-  userWord[0] = 0;
+  lastWord = getNextWord();
+  currentLength += lastWord.size();
+  lineCount = lastWord.size();
   do
   {
-    do
+    if (confirmChars == MM_TRUE)
     {
-      ++charCount;
-      ++currentLength;
-      ++lineCount;
-#ifdef CALIBRATE_MODE
-      switch (lastSign)
-      {
-        case 0:error = outputSign('p');
-              break;
-        case 1:error = outputSign('a');
-              break;
-        case 2:error = outputSign('r');
-              break;
-        case 3:error = outputSign('i');
-              break;
-        case 4:error = outputSign('s');
-              break;
-      }
-
-      ++lastSign;
-      if (lastSign == 5) lastSign = 0;
-#else
-      lastSign = signRandom();
-      error = outputSign(lastSign);
-
-      if (confirmChars == 2)
-      {
-      	lastWord[charCount-1] = lastSign;
-      }
-#endif
-      // 2*dotlength + (delay-1)*3
-      mmslPlayPauseDits(2);
-      mmslPlayPause((delayFactor-1) * 3);
-      if (kbhit() != 0)
-      {
-        b = getch();
-        if (b == KEY_BACKSPACE) error = MM_TRUE;
-      }
-    } while ((charCount < wordLength) && (error == MM_FALSE));
-
-    if ((confirmChars == 2) && (error == MM_FALSE))
-    {
-      lastWord[charCount] = 0;
-      userWord[0] = 0;
+      userWord = "";
       getyx(stdscr, posY, posX);
       ++posX;
       ++posY;
-      readString(posX, posY, wordLength, userWord);
+      mmslMorseWord(lastWord);
+      // TODO add option to repeat word!
+      userWord = readString(posX, posY, lastWord.size()+1, userWord);
       gotoxy(posX, posY);
-      errorCount += compareStrings(userWord, lastWord);
-      mmslPrepareSoundStream();
-    }
-
-    charCount = 0;
-
-    if (variableWords == MM_TRUE)
-      wordLength = mmRandom(6) + 3;
-
-    if (wordLength+lineCount < (screenX-1))
-    {
-      writeChar(' ');
-      ++lineCount;
+      errors = compareStrings(userWord, lastWord);
+      if (errors > 0)
+      {
+        errorCount += errors;
+        textModusError();
+        writeString(lastWord);
+        textModusNormal();
+        mmslPrepareSoundStream();
+        mmslPlayErrorTone();
+      }
+      else
+      {
+        writeString(lastWord);
+        mmslPrepareSoundStream();
+      }
+ 
     }
     else
     {
-      lineCount = 0;
+      mmslMorseWord(lastWord);
+      mmslDrainSoundStream();
+      writeString(lastWord);
+      if (kbhit() != 0)
+      {
+        b = getch();
+        switch (b)
+        {
+          case KEY_BACKSPACE:
+          case KEY_ESCAPE: error = MM_TRUE;
+                           break;
+          case KEY_UP: // Tone up
+                         tone = mmslGetFrequency();
+                         if (tone < 1200)
+                         {
+                            tone += 100;
+                    
+                            mmslSetFrequency(tone); 
+                         }
+                         break;
+ 
+          case KEY_DOWN: // Tone down
+                         tone = mmslGetFrequency();
+                         if (tone > 600)
+                         {
+                            tone -= 100;
+                    
+                            mmslSetFrequency(tone); 
+                         }
+                         break;
+          case KEY_LEFT: // Slower
+                         bpm = mmslGetBpm();
+                         if (bpm > 10)
+                         {
+                            if (bpm > 180)
+                             bpm -= 10;
+                            else
+                              bpm -= 5;
+                    
+                            mmslSetBpm(bpm); 
+                         }
+                         break;
+          case KEY_RIGHT: // Faster
+                         bpm = mmslGetBpm();
+                         if (bpm < 250)
+                         {
+                            if (bpm > 180)
+                             bpm += 10;
+                            else
+                              bpm += 5;
+                    
+                            mmslSetBpm(bpm); 
+                         }
+                         break;
+        }
+        while (kbhit() != 0) getch();
+        mmslPrepareSoundStream();
+      }
+      else
+      {
+        mmslPrepareSoundStream();
+        mmslPlayPauseWord();
+      }
+    }
+
+    lastWord = getNextWord();
+    currentLength += lastWord.size();
+
+    // Passt das neue Wort noch in die aktuelle Zeile?
+    if (((int) lastWord.size())+lineCount < (screenX-1))
+    {
+      // Ja
+      writeChar(' ');
+      lineCount += lastWord.size() + 1;
+    }
+    else
+    {
+      lineCount = lastWord.size();
       ++lineNumber;
       if (lineNumber >= (screenY-1))
       {
@@ -812,7 +628,6 @@ void outputMorseCode(void)
       }
     }
 
-    mmslPlayPauseDits(4*delayFactor);
   } while ((currentLength < totalLength) && (error == MM_FALSE));
 
   if (kbhit() != 0)
@@ -820,10 +635,8 @@ void outputMorseCode(void)
     while (kbhit() != 0) getch();
   }
 
-  writeString("\n\r");
-  dit();dah();dit();dah();dit();writeChar('+');
-  mmslPlayPauseDits(2);
-  writeChar(' ');dit();dit();dit();dah();dit();dah();writeString("sk");
+  writeString("\n\r+");
+  mmslMorseWord("+");
   if (confirmChars != 0)
   {
     writeString("   (");
@@ -831,7 +644,6 @@ void outputMorseCode(void)
     writeString(" Fehler)");
   }
   writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY, 1, 2);
-
 
   b = getch();
 }
@@ -842,8 +654,8 @@ void outputMorseCode(void)
 void mainMenu(int current)
 {
   clrscr(); 
-  writeSelection("*** Der Morsemann v1.3 ***",centerX-13, centerY-3, 1, 2);
-  writeSelection("by Dirk Bächle (dl9obn@darc.de), 2003-03-07",centerX-23, screenY, 1, 2);
+  writeSelection("*** Der Morsemann v1.4 ***",centerX-13, centerY-3, 1, 2);
+  writeSelection("Dirk Bächle (dl9obn@darc.de), 2003-03-07",centerX-20, screenY, 1, 2);
 
   writeSelection("Start", centerX-MENU_WIDTH, centerY-1, 1, current);
   writeSelection("Optionen", centerX-MENU_WIDTH, centerY, 2, current);
@@ -875,7 +687,7 @@ void mainSelection(void)
         if (currentSelection == 3) currentSelection = 1;
         else ++currentSelection;
       }
-    if (b == 13)
+    if (b == ENTER_CHAR)
     {
       switch (currentSelection)
       {
