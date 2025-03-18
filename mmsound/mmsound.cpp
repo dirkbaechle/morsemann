@@ -25,8 +25,8 @@ static unsigned int mmslDotLength = 100;
 unsigned int mmslDelayFactor = 1;
 /** Rampe für das Formen (Smoothing) der Morsezeichen in ms */
 unsigned long int rampLength = 2;
-static int mmslFrequency = 800;
-static int mmslSmoothen = 3;
+static unsigned int mmslFrequency = 800;
+static unsigned int mmslSmoothen = 3;
 static int mmslSystem = MMSL_NONE;
 
 #ifdef HAVE_ALSA
@@ -277,26 +277,13 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
               }
               break;
     }
-  endOfChar += toGo;
+    endOfChar += toGo;
     // add a pause
     endOfChar += ditSamples;
   }
 
   return endOfChar;
 }
-
-
-// TODO write functions that map the intro and outro area of each morse
-// dit/dah to the interval [0.0, 1.0] and then apply either
-// 
-// generalSmoothStep(1, x) = -2x^3 + 3x^2
-//
-// or
-//
-// generalSmoothStep(2, x) = 6x^5 - 15x^4 + 10x^3
-
-
-
 #endif
 
 bool mmslInitSoundSystem(int system, const std::string &device)
@@ -413,24 +400,24 @@ bool mmslSoundSystemAvailable(int system)
   return false;
 }
 
-void mmslSetSmoothening(int smoothen)
+void mmslSetSmoothening(unsigned int smoothen)
 {
   mmslSmoothen = smoothen;
 }
 
-void mmslSetFrequency(int frequency)
+unsigned int mmslGetSmoothening()
 {
-  switch (mmslSystem)
-  {
-    case MMSL_ALSA:
-#ifdef HAVE_ALSA
-      renderFrequencyToBuffer(frequency);
-#endif
-      break;
-    default:
-      break;
-  }
+  return mmslSmoothen;
+}
+
+void mmslSetFrequency(unsigned int frequency)
+{
   mmslFrequency = frequency;
+}
+
+unsigned int mmslGetFrequency()
+{
+  return mmslFrequency;
 }
 
 void mmslPlayTone(unsigned long int duration)

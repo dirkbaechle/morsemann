@@ -494,6 +494,8 @@ void outputMorseCode(void)
   int error = MM_FALSE;
   int errors = 0;
   keyChar b = '0';
+  unsigned int bpm = 0;
+  unsigned int tone = 0;
 
   clrscr();
   refresh();
@@ -542,9 +544,54 @@ void outputMorseCode(void)
       if (kbhit() != 0)
       {
         b = getch();
-        if ((b == KEY_BACKSPACE) || (b == KEY_ESCAPE))
+        switch (b)
         {
-          error = MM_TRUE;
+          case KEY_BACKSPACE:
+          case KEY_ESCAPE: error = MM_TRUE;
+                           break;
+          case KEY_UP: // Tone up
+                         tone = mmslGetFrequency();
+                         if (tone < 1200)
+                         {
+                            tone += 100;
+                    
+                            mmslSetFrequency(tone); 
+                         }
+                         break;
+ 
+          case KEY_DOWN: // Tone down
+                         tone = mmslGetFrequency();
+                         if (tone > 600)
+                         {
+                            tone -= 100;
+                    
+                            mmslSetFrequency(tone); 
+                         }
+                         break;
+          case KEY_LEFT: // Slower
+                         bpm = mmslGetBpm();
+                         if (bpm > 10)
+                         {
+                            if (bpm > 180)
+                             bpm -= 10;
+                            else
+                              bpm -= 5;
+                    
+                            mmslSetBpm(bpm); 
+                         }
+                         break;
+          case KEY_RIGHT: // Faster
+                         bpm = mmslGetBpm();
+                         if (bpm < 250)
+                         {
+                            if (bpm > 180)
+                             bpm += 10;
+                            else
+                              bpm += 5;
+                    
+                            mmslSetBpm(bpm); 
+                         }
+                         break;
         }
         while (kbhit() != 0) getch();
         mmslPrepareSoundStream();

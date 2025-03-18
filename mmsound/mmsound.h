@@ -19,8 +19,11 @@ extern void mmslSetBpm(unsigned int bpm);
 extern unsigned int mmslGetBpm();
 extern void mmslSetDelayFactor(unsigned int factor);
 extern unsigned int mmslGetDelayFactor();
-extern void mmslSetSmoothening(int smoothen);
-extern void mmslSetFrequency(int frequency);
+extern void mmslSetSmoothening(unsigned int smoothen);
+extern unsigned int mmslGetSmoothening();
+extern void mmslSetFrequency(unsigned int frequency);
+extern unsigned int mmslGetFrequency();
+
 
 extern void mmslPlayTone(unsigned long int duration);
 extern void mmslPlayPause(unsigned long int duration);
