@@ -49,6 +49,7 @@ von Morsezeichen (CW).
 #include <stdlib.h>
 #include <map>
 #include <string>
+#include <sstream>
 
 #include <unistd.h>
 #include <ncurses.h>
@@ -57,6 +58,7 @@ von Morsezeichen (CW).
 
 using std::map;
 using std::string;
+using std::ostringstream;
 
 /*--------------------------------------------------------- Defines */
 
@@ -68,6 +70,7 @@ const int GROUP_WIDTH = 15;
 const int OPT_LEFT_WIDTH = 19;
 const int OPT_RIGHT_WIDTH = 8;
 const int MENU_WIDTH = 4;
+const int INFO_WIDTH = 20;
 
 /*------------------------------------------------ Global variables */
 
@@ -523,7 +526,19 @@ void optionsSelection(void)
   }
 }
 
-int handleKeyPress(int b)
+void updateInfos(WINDOW *infowin)
+{
+  ostringstream info;
+  info << mmslGetBpm() << "bpm, " << mmslGetFrequency() << "Hz";
+  string infoText = info.str();
+  string fill(INFO_WIDTH - infoText.size(), ' ');
+  
+  wmove(infowin, 0, screenX - INFO_WIDTH);
+  wprintw(infowin, "%s%s", fill.c_str(), infoText.c_str());
+  wrefresh(infowin);
+}
+
+int handleKeyPress(int b, WINDOW *infowin)
 {
   int error = MM_CONTINUE;
   switch (b)
@@ -533,29 +548,33 @@ int handleKeyPress(int b)
                       break;
     case KEY_UP: // Tone up
                     toneUp();
+                    updateInfos(infowin);
                     break;
     case KEY_DOWN: // Tone down
                     toneDown();
+                    updateInfos(infowin);
                     break;
     case KEY_LEFT: // Slower
                     bpmDown();
+                    updateInfos(infowin);
                     break;
     case KEY_RIGHT: // Faster
                     bpmUp();
+                    updateInfos(infowin);
                     break;
   }
 
   return error;
 }
 
-int handleConfirmInput(WINDOW *confirmwin, const string &lastWord, string &userWord, int &action)
+int handleConfirmInput(WINDOW *confirmwin, WINDOW *infowin, const string &lastWord, string &userWord, int &action)
 {
   unsigned int b = 0;
   int error = MM_CONTINUE;
   if (kbhit() != 0)
   {
     b = wgetch(confirmwin);
-    error = handleKeyPress(b);
+    error = handleKeyPress(b, infowin);
     while (kbhit() != 0) wgetch(confirmwin);
   }
   if (error == MM_CONTINUE)
@@ -588,10 +607,12 @@ void outputMorseCode(void)
 
   // Windows erzeugen
   WINDOW *mainwin = nullptr;
+  WINDOW *infowin = nullptr;
   WINDOW *confirmwin = nullptr;
   if (confirmChars == MM_TRUE)
   {
-    mainwin = newwin(screenY - 3, screenX, 0, 0);
+    mainwin = newwin(screenY - 4, screenX, 0, 0);
+    infowin = newwin(1, screenX, screenY - 4, 0);
     confirmwin = newwin(3, screenX, screenY - 3, 0);
     keypad(confirmwin, TRUE);  /* enable keyboard mapping */
     box(confirmwin, 0, 0);
@@ -599,10 +620,12 @@ void outputMorseCode(void)
   }
   else
   {
-    mainwin = newwin(screenY, screenX, 0, 0);
+    mainwin = newwin(screenY - 1, screenX, 0, 0);
+    infowin = newwin(1, screenX, screenY - 1, 0);
   }
   keypad(mainwin, TRUE);  /* enable keyboard mapping */
   wrefresh(mainwin);
+  updateInfos(infowin);
 
   mmslPrepareSoundStream();
   mmslPlayPause(1000);
@@ -626,7 +649,7 @@ void outputMorseCode(void)
       getyx(mainwin, posY, posX);
       do {
         mmslMorseWord(lastWord);
-        intent = handleConfirmInput(confirmwin, lastWord, userWord, action);
+        intent = handleConfirmInput(confirmwin, infowin, lastWord, userWord, action);
       } while ((action == MM_REPEAT) && (intent == MM_CONTINUE));
       wmove(mainwin, posY, posX);
       errors = compareStrings(userWord, lastWord);
@@ -657,7 +680,7 @@ void outputMorseCode(void)
       if (kbhit() != 0)
       {
         b = wgetch(mainwin);
-        intent = handleKeyPress(b);
+        intent = handleKeyPress(b, infowin);
         while (kbhit() != 0) wgetch(mainwin);
       }
       mmslPrepareSoundStream();
@@ -683,9 +706,9 @@ void outputMorseCode(void)
       lineCount = lastWord.size();
       ++lineNumber;
       if (confirmChars == MM_TRUE)
-        lineStop = screenY - 4;
+        lineStop = screenY - 5;
       else
-        lineStop = screenY - 1;
+        lineStop = screenY - 2;
       if (lineNumber >= lineStop)
       {
         wclear(mainwin);
@@ -710,9 +733,9 @@ void outputMorseCode(void)
     writeStringW(mainwin, " Fehler)");
   }
   if (confirmChars == MM_TRUE) 
-    wmove(mainwin, screenY - 5, centerX - 15);
+    wmove(mainwin, screenY - 6, centerX - 15);
   else
-    wmove(mainwin, screenY - 3, centerX - 15);
+    wmove(mainwin, screenY - 4, centerX - 15);
   wrefresh(mainwin);
   writeStringW(mainwin, "<< Bitte eine Taste drücken >>");
 
@@ -723,6 +746,7 @@ void outputMorseCode(void)
   }
 
   delwin(mainwin);
+  delwin(infowin);
   if (confirmChars == MM_TRUE)
     delwin(confirmwin);
 
