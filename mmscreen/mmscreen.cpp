@@ -8,7 +8,6 @@
 #include <sstream>  
 
 #include <unistd.h>
-#include <curses.h>
 
 using std::string;
 
@@ -41,6 +40,17 @@ void writeString(const string& str)
   refresh();
 }
 
+/** Schreibt den String \a string an die aktuelle
+Position auf dem Fenster \a curwin.
+@param curwin Fenster für die Ausgabe
+@param string String
+*/
+void writeStringW(WINDOW *curwin, const string& str)
+{
+  wprintw(curwin, "%s", str.c_str());
+  wrefresh(curwin);
+}
+
 /** Schreibt die Zahl \a number an die aktuelle
 Position auf dem Bildschirm.
 @param number Zahl
@@ -51,6 +61,17 @@ void writeNumber(int number)
   refresh();
 }
 
+/** Schreibt die Zahl \a number an die aktuelle
+Position auf dem Fenster \a curwin.
+@param curwin Fenster für die Ausgabe
+@param number Zahl
+*/
+void writeNumberW(WINDOW *curwin, int number)
+{
+  wprintw(curwin, "%d", number);
+  wrefresh(curwin);
+}
+
 /** Schreibt den Buchstaben \a b an die aktuelle
 Position auf dem Bildschirm.
 @param b Buchstabe
@@ -59,6 +80,17 @@ void writeChar(char b)
 {
   addch(b);
   refresh();
+}
+
+/** Schreibt den Buchstaben \a b an die aktuelle
+Position auf dem Fenster \a curwin.
+@param curwin Fenster für die Ausgabe
+@param b Buchstabe
+*/
+void writeCharW(WINDOW *curwin, char b)
+{
+  waddch(curwin, b);
+  wrefresh(curwin);
 }
 
 /** Bewegt den Cursor an die Position \a xpos, \a ypos.
@@ -119,6 +151,19 @@ void textModusNormal(void)
 #endif
 }
 
+/** Schaltet in den ``normalen'' Text-Modus, d.h.
+weisse Schrift auf schwarzem Grund im Fenster \a curwin .
+*/
+void textModusNormalW(WINDOW *curwin)
+{
+#ifdef NO_COLORS
+  wattroff(curwin, A_STANDOUT);
+#else
+  wattrset(curwin, COLOR_PAIR(7));
+#endif
+}
+
+
 /** Schaltet in den Text-Modus für ``Auswahl'', d.h.
 weiße Schrift auf blauem Grund.
 */
@@ -140,6 +185,18 @@ void textModusError(void)
   attron(A_STANDOUT);
 #else
   attrset(COLOR_PAIR(1));
+#endif
+}
+
+/** Schaltet in den Text-Modus für ``Fehler'', d.h.
+rote Schrift auf schwarzem Grund im Fenster \a curwin .
+*/
+void textModusErrorW(WINDOW *curwin)
+{
+#ifdef NO_COLORS
+  wattron(curwin, A_STANDOUT);
+#else
+  wattrset(curwin, COLOR_PAIR(1));
 #endif
 }
 
@@ -178,6 +235,84 @@ void writeSelection(const string& str, int xpos, int ypos,
     textModusNormal();
 }
 
+/** Liest einen String an der Position (xpos,ypos) im
+Fenster \a curwin mit maximal \a max Buchstaben linksbündig ein.
+@param curwin Fenster
+@param xpos x-Koordinate
+@param ypos y-Koordinate
+@param max Maximale Anzahl der Buchstaben
+@param str Aktueller/Neuer String
+@return Fehlercode, MM_ACCEPT oder MM_REPEAT oder MM_ESCAPE
+*/
+int confirmString(WINDOW *curwin, int xpos, int ypos, int max, string& str)
+{
+  keyChar letter = '0';
+  string stringCopy(str);
+  int stringLength = stringCopy.size();
+
+  showCursor();
+
+  wmove(curwin, ypos, xpos);
+  wprintw(curwin, "%s", stringCopy.c_str());
+  wrefresh(curwin);
+
+  while ((letter != KEY_ESCAPE) && 
+         (letter != ENTER_CHAR) &&
+         (letter != KEY_REPEAT_MORSE))
+  {
+    letter = wgetch(curwin);
+    if (kbhit() != 0)
+    {
+      while (kbhit() != 0) wgetch(curwin);
+    }
+
+    if (letter == KEY_BACKSPACE)
+    {
+      if (stringLength > 0)
+      {
+        --stringLength;
+        stringCopy = stringCopy.substr(0, stringLength);
+        wmove(curwin, ypos, xpos);
+        wprintw(curwin, "%s ", stringCopy.c_str());
+        wmove(curwin, ypos, xpos+stringLength);
+        wrefresh(curwin);
+      }
+    }
+    else
+    {
+      if ((letter > 31) && (letter != KEY_REPEAT_MORSE))
+      {
+        if (stringLength < max)
+        {
+          stringCopy += letter;
+          ++stringLength;
+          wmove(curwin, ypos, xpos);
+          wprintw(curwin, "%s", stringCopy.c_str());
+          wrefresh(curwin);
+        }
+      }
+    }
+  }
+  hideCursor();
+
+  wclear(curwin);
+  box(curwin, 0, 0);
+  wrefresh(curwin);
+
+  switch (letter)
+  {
+    case KEY_ESCAPE: // Abbruch
+                     return MM_ESCAPE;
+    case KEY_REPEAT_MORSE: // Nochmal die Morsezeichen abspielen
+                 return MM_REPEAT;
+    case ENTER_CHAR: // Accept -> Geänderte Kopie des Strings übernehmen
+                    str = stringCopy;
+                    return MM_ACCEPT;
+  }
+
+  return MM_ESCAPE;
+}
+
 /** Liest einen String an der Position (xpos,ypos) mit maximal
 \a max Buchstaben linksbündig ein.
 @param xpos x-Koordinate
@@ -196,7 +331,8 @@ string readString(int xpos, int ypos, int max, const string& str)
 
   moveWrite(ypos, xpos, "%s", stringCopy);
 
-  while ((letter != 27) && (letter != 13))
+  while ((letter != KEY_ESCAPE) && 
+         (letter != ENTER_CHAR))
   {
     letter = getch();
 
@@ -223,7 +359,7 @@ string readString(int xpos, int ypos, int max, const string& str)
       }
     }
   }
-  if (letter == 27)
+  if (letter == KEY_ESCAPE)
   {
     // Abbruch -> Alten String wiederherstellen
     stringCopy = str;
@@ -256,7 +392,7 @@ int readNumber(int xpos, int ypos, int max, int number)
 
   moveWrite(ypos, xpos, "%s", stringCopy);
 
-  while ((letter != 27) && (letter != 13))
+  while ((letter != KEY_ESCAPE) && (letter != ENTER_CHAR))
   {
     letter = getch();
     if (letter == KEY_BACKSPACE)
@@ -283,7 +419,7 @@ int readNumber(int xpos, int ypos, int max, int number)
     }
   }
 
-  if (letter != 27)
+  if (letter != KEY_ESCAPE)
   {
     // String zu int konvertieren
     stream.clear();

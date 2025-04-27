@@ -38,11 +38,6 @@ von Morsezeichen (CW).
 /* (hoffentlich) vom Terminal unterstützte ``Highlighting'' */
 /* #define NO_COLORS */
 
-/* Falls gesetzt, wird fortlaufend das Standardwort */
-/* `paris' erzeugt. Dient der Überprüfung der */
-/* Geschwindigkeitsangaben. */
-/* #define CALIBRATE_MODE */
-
 /*-------------------------------------------------------- Includes */
 
 #include "mmsound.h"
@@ -55,7 +50,6 @@ von Morsezeichen (CW).
 #include <map>
 #include <string>
 
-#include <cstring>
 #include <unistd.h>
 #include <ncurses.h>
 #include <time.h>
@@ -181,9 +175,9 @@ void readCharSet(void)
     error = MM_FALSE;
     i = 0;
 
-    readString(1, centerY+1, 75, charSet);
+    charSet = readString(1, centerY+1, 75, charSet);
 
-    charSetLength = strlen(charSet);
+    charSetLength = charSet.size();
 
     while ((i < charSetLength) && (error == MM_FALSE))
     {
@@ -246,6 +240,72 @@ void charGroupSelection(void)
   }
 }
 
+/** Erhöht die aktuelle Morsegeschwindigkeit.
+ */
+void bpmUp(void)
+{
+  unsigned int bpm = mmslGetBpm();
+
+  if (bpm == 250)
+    bpm = 10;
+  else
+  {
+    if (bpm >= 180)
+      bpm += 10;
+    else
+      bpm += 5;
+  }
+
+  mmslSetBpm(bpm);
+}
+
+/** Verringert die aktuelle Morsegeschwindigkeit.
+ */
+void bpmDown(void)
+{
+  unsigned int bpm = mmslGetBpm();
+
+  if (bpm == 10)
+    bpm = 250;
+  else
+  {
+    if (bpm > 180)
+      bpm -= 10;
+    else
+      bpm -= 5;
+  }
+
+  mmslSetBpm(bpm);
+}
+
+/** Erhöht die aktuelle Tonhöhe.
+ */
+void toneUp()
+{
+  unsigned int tone = mmslGetFrequency();
+
+  if (tone < 1200)
+  {
+    tone += 100;
+
+    mmslSetFrequency(tone); 
+  }
+}
+
+/** Verringert die aktuelle Tonhöhe.
+ */
+void toneDown()
+{
+  unsigned int tone = mmslGetFrequency();
+
+  if (tone > 600)
+  {
+    tone -= 100;
+
+    mmslSetFrequency(tone); 
+  }
+}
+
 /** Auswahl der Geschwindigkeit.
 */
 void speedSelection(void)
@@ -256,11 +316,12 @@ void speedSelection(void)
   writeSelection("Auswahl der Geschwindigkeit", centerX-15, centerY-1, 1, 2);
 
   textModusSelect();
-  unsigned int bpm = mmslGetBpm();
+  unsigned int bpm;
 
   while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
   {
     gotoxy(centerX-3, centerY+1);
+    bpm = mmslGetBpm();
     if (bpm < 100)
       writeChar(' ');
 
@@ -272,35 +333,17 @@ void speedSelection(void)
     /* Cursor hoch */
     if (b == KEY_UP)
     {
-      if (bpm == 250)
-        bpm = 10;
-      else
-      {
-        if (bpm >= 180)
-          bpm += 10;
-        else
-          bpm += 5;
-      }
+      bpmUp();
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
-      if (bpm == 10)
-        bpm = 250;
-      else
-      {
-        if (bpm > 180)
-          bpm -= 10;
-        else
-          bpm -= 5;
-      }
+      bpmDown();
     }
   }
 
   textModusNormal();
-
-  mmslSetBpm(bpm);
 }
 
 /** Auswahl des Pausenfaktors.
@@ -400,9 +443,9 @@ void optionsMenu(int akt)
   {
     writeSelection("Zeichenmenge:", centerX-6, centerY+5, 1, 2);
     if ((centerX-(charSetLength/2)) > 0)
-      writeSelection(charSet, centerX-(charSetLength/2), centerY+6, 1, 2);
+      writeSelection(charSet.c_str(), centerX-(charSetLength/2), centerY+6, 1, 2);
     else
-      writeSelection(charSet, 0, centerY+6, 1, 2);
+      writeSelection(charSet.c_str(), 0, centerY+6, 1, 2);
   }
 
 }
@@ -480,25 +523,87 @@ void optionsSelection(void)
   }
 }
 
+int handleKeyPress(int b)
+{
+  int error = MM_CONTINUE;
+  switch (b)
+  {
+    case KEY_BACKSPACE:
+    case KEY_ESCAPE: error = MM_ESCAPE;
+                      break;
+    case KEY_UP: // Tone up
+                    toneUp();
+                    break;
+    case KEY_DOWN: // Tone down
+                    toneDown();
+                    break;
+    case KEY_LEFT: // Slower
+                    bpmDown();
+                    break;
+    case KEY_RIGHT: // Faster
+                    bpmUp();
+                    break;
+  }
+
+  return error;
+}
+
+int handleConfirmInput(WINDOW *confirmwin, const string &lastWord, string &userWord, int &action)
+{
+  unsigned int b = 0;
+  int error = MM_CONTINUE;
+  if (kbhit() != 0)
+  {
+    b = wgetch(confirmwin);
+    error = handleKeyPress(b);
+    while (kbhit() != 0) wgetch(confirmwin);
+  }
+  if (error == MM_CONTINUE)
+  {
+    action = confirmString(confirmwin, 1, 1, lastWord.size()+1, userWord);
+    if (action == MM_REPEAT)
+      mmslPrepareSoundStream();
+  }
+
+  return error;
+}
+
 /** Ausgabe der Morsezeichen, entsprechend der Optionen.
 */
 void outputMorseCode(void)
 {
   int currentLength = 0;
   int lineCount = 0;
+  int lineStop = 0;
   int lineNumber = 0;
   int posX = 1;
   int posY = 1;
   string lastWord;
   string userWord;
-  int error = MM_FALSE;
+  int intent = MM_CONTINUE; // do we want to stop, or continue going?
   int errors = 0;
   keyChar b = '0';
-  unsigned int bpm = 0;
-  unsigned int tone = 0;
 
   clrscr();
-  refresh();
+
+  // Windows erzeugen
+  WINDOW *mainwin = nullptr;
+  WINDOW *confirmwin = nullptr;
+  if (confirmChars == MM_TRUE)
+  {
+    mainwin = newwin(screenY - 3, screenX, 0, 0);
+    confirmwin = newwin(3, screenX, screenY - 3, 0);
+    keypad(confirmwin, TRUE);  /* enable keyboard mapping */
+    box(confirmwin, 0, 0);
+    wrefresh(confirmwin);
+  }
+  else
+  {
+    mainwin = newwin(screenY, screenX, 0, 0);
+  }
+  keypad(mainwin, TRUE);  /* enable keyboard mapping */
+  wrefresh(mainwin);
+
   mmslPrepareSoundStream();
   mmslPlayPause(1000);
 
@@ -507,98 +612,58 @@ void outputMorseCode(void)
   lastWord = getNextWord();
   currentLength += lastWord.size();
   lineCount = lastWord.size();
+
   do
   {
     if (confirmChars == MM_TRUE)
     {
+      //
+      // Wort in Morsezeichen geben, mit Abfrage bzw.
+      // Eingabe der Zeichen über die Tastatur
+      //
+      int action = MM_ACCEPT;
       userWord = "";
-      getyx(stdscr, posY, posX);
-      ++posX;
-      ++posY;
-      mmslMorseWord(lastWord);
-      // TODO add option to repeat word!
-      userWord = readString(posX, posY, lastWord.size()+1, userWord);
-      gotoxy(posX, posY);
+      getyx(mainwin, posY, posX);
+      do {
+        mmslMorseWord(lastWord);
+        intent = handleConfirmInput(confirmwin, lastWord, userWord, action);
+      } while ((action == MM_REPEAT) && (intent == MM_CONTINUE));
+      wmove(mainwin, posY, posX);
       errors = compareStrings(userWord, lastWord);
       if (errors > 0)
       {
         errorCount += errors;
-        textModusError();
-        writeString(lastWord);
-        textModusNormal();
+        textModusErrorW(mainwin);
+        writeStringW(mainwin, lastWord);
+        textModusNormalW(mainwin);
         mmslPrepareSoundStream();
         mmslPlayErrorTone();
       }
       else
       {
-        writeString(lastWord);
+        writeStringW(mainwin, lastWord);
         mmslPrepareSoundStream();
       }
  
     }
     else
     {
+      //
+      // Wort in Morsezeichen geben, ohne Abfrage
+      //
       mmslMorseWord(lastWord);
       mmslDrainSoundStream();
-      writeString(lastWord);
+      writeStringW(mainwin, lastWord);
       if (kbhit() != 0)
       {
-        b = getch();
-        switch (b)
-        {
-          case KEY_BACKSPACE:
-          case KEY_ESCAPE: error = MM_TRUE;
-                           break;
-          case KEY_UP: // Tone up
-                         tone = mmslGetFrequency();
-                         if (tone < 1200)
-                         {
-                            tone += 100;
-                    
-                            mmslSetFrequency(tone); 
-                         }
-                         break;
- 
-          case KEY_DOWN: // Tone down
-                         tone = mmslGetFrequency();
-                         if (tone > 600)
-                         {
-                            tone -= 100;
-                    
-                            mmslSetFrequency(tone); 
-                         }
-                         break;
-          case KEY_LEFT: // Slower
-                         bpm = mmslGetBpm();
-                         if (bpm > 10)
-                         {
-                            if (bpm > 180)
-                             bpm -= 10;
-                            else
-                              bpm -= 5;
-                    
-                            mmslSetBpm(bpm); 
-                         }
-                         break;
-          case KEY_RIGHT: // Faster
-                         bpm = mmslGetBpm();
-                         if (bpm < 250)
-                         {
-                            if (bpm > 180)
-                             bpm += 10;
-                            else
-                              bpm += 5;
-                    
-                            mmslSetBpm(bpm); 
-                         }
-                         break;
-        }
-        while (kbhit() != 0) getch();
-        mmslPrepareSoundStream();
+        b = wgetch(mainwin);
+        intent = handleKeyPress(b);
+        while (kbhit() != 0) wgetch(mainwin);
       }
-      else
+      mmslPrepareSoundStream();
+
+      if (intent == MM_CONTINUE)
       {
-        mmslPrepareSoundStream();
         mmslPlayPauseWord();
       }
     }
@@ -610,42 +675,57 @@ void outputMorseCode(void)
     if (((int) lastWord.size())+lineCount < (screenX-1))
     {
       // Ja
-      writeChar(' ');
+      writeCharW(mainwin, ' ');
       lineCount += lastWord.size() + 1;
     }
     else
     {
       lineCount = lastWord.size();
       ++lineNumber;
-      if (lineNumber >= (screenY-1))
+      if (confirmChars == MM_TRUE)
+        lineStop = screenY - 4;
+      else
+        lineStop = screenY - 1;
+      if (lineNumber >= lineStop)
       {
-        clrscr();
+        wclear(mainwin);
+        wmove(mainwin, 0, 0);
+        wrefresh(mainwin);
         lineNumber = 0;
       }
       else
       {
-      	writeString("\n\r");
+      	writeStringW(mainwin, "\n\r");
       }
     }
 
-  } while ((currentLength < totalLength) && (error == MM_FALSE));
+  } while ((currentLength <= totalLength) && (intent == MM_CONTINUE));
 
+  writeStringW(mainwin, "\n\r+");
+  mmslMorseWord("+");
+  if (confirmChars == MM_TRUE)
+  {
+    writeStringW(mainwin, "   (");
+    writeNumberW(mainwin, errorCount);
+    writeStringW(mainwin, " Fehler)");
+  }
+  if (confirmChars == MM_TRUE) 
+    wmove(mainwin, screenY - 5, centerX - 15);
+  else
+    wmove(mainwin, screenY - 3, centerX - 15);
+  wrefresh(mainwin);
+  writeStringW(mainwin, "<< Bitte eine Taste drücken >>");
+
+  b = wgetch(mainwin);
   if (kbhit() != 0)
   {
-    while (kbhit() != 0) getch();
+    while (kbhit() != 0) wgetch(mainwin);
   }
 
-  writeString("\n\r+");
-  mmslMorseWord("+");
-  if (confirmChars != 0)
-  {
-    writeString("   (");
-    writeNumber(errorCount);
-    writeString(" Fehler)");
-  }
-  writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY, 1, 2);
+  delwin(mainwin);
+  if (confirmChars == MM_TRUE)
+    delwin(confirmwin);
 
-  b = getch();
 }
 
 /** Zeigt das Menü an.
