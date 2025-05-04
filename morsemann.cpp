@@ -579,9 +579,14 @@ int handleConfirmInput(WINDOW *confirmwin, WINDOW *infowin, const string &lastWo
   }
   if (error == MM_CONTINUE)
   {
+    wmove(confirmwin, 0, 1);
+    wprintw(confirmwin, " Eingabe ('#' wiederholt) ");
+    wrefresh(confirmwin);
     action = confirmString(confirmwin, 1, 1, lastWord.size()+1, userWord);
     if (action == MM_REPEAT)
       mmslPrepareSoundStream();
+    box(confirmwin, 0, 0);
+    wrefresh(confirmwin);
   }
 
   return error;
