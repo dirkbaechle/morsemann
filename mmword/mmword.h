@@ -19,7 +19,7 @@ extern int selectedCharGroup;
 extern int variableWords;
 extern int fixedWordLength;
 extern int confirmChars;
-extern char charSet[255];
+extern std::string charSet;
 extern int charSetLength;
 extern char groupString[8][50];
 
@@ -29,6 +29,8 @@ extern int mmRandom(int maxNumber);
 extern char mapToChar(int letterID);
 extern char charSetRandom(void);
 extern char signRandom(void);
+extern void mmwlSetCountErrorsPerWord(int countWords);
+extern int mmwlGetCountErrorsPerWord();
 extern int compareStrings(const std::string &userWord, const std::string &lastWord);
 extern std::string getNextWord();
 

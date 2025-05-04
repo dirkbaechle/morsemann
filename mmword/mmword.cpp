@@ -24,8 +24,10 @@ int variableWords = 0;
 int fixedWordLength = 5;
 /** Bestätigung/Abfrage der einzelnen Wörter? (0=nein, 1=ja) */
 int confirmChars = 0;
+/** Werden Fehler pro Wort gezählt? (0=nein jeder Buchstabe einzeln, 1=ja) */
+int countErrorsPerWord = MM_TRUE;
 /** Zeichenmenge als String (Auswahl = 8) */
-char charSet[255];
+string charSet;
 /** Länge des Zeichenmenge-Strings */
 int charSetLength = 0;
 /** Array mit den Strings für die Zeichenauswahl */
@@ -123,24 +125,34 @@ int compareStrings(const string &userWord, const string &lastWord)
   size_t pos = 0;
   int errors = 0;
 
-  while ((pos < userWord.size()) && (pos < lastWord.size()))
+  if (countErrorsPerWord)
   {
-    if (userWord[pos] != lastWord[pos])
+    // Ist das gesamte Wort richtig?
+    if (userWord.compare(lastWord) != 0)
     {
-      ++errors;
+      errors = 1;
     }
-    ++pos;
-  };
-
-  /* Sind noch Zeichen übrig? */
-  if (pos < lastWord.size())
-  {
-    errors += lastWord.size() - pos;
   }
+  else
+  {
+    // Fehler pro Buchstabe zählen
+    while ((pos < userWord.size()) && (pos < lastWord.size()))
+    {
+      if (userWord[pos] != lastWord[pos])
+      {
+        ++errors;
+      }
+      ++pos;
+    };
 
+    /* Sind noch Zeichen übrig? */
+    if (pos < lastWord.size())
+    {
+      errors += lastWord.size() - pos;
+    }
+  }
   return errors;
 }
-
 
 /** Ermittelt das nächste Wort, basierend auf den aktuell gewählten
 Einstellungen (Wortlänge, Zeichenmenge usw.) und liefert dieses
@@ -167,4 +179,14 @@ string getNextWord()
   } while (charCount < wordLength);
 
   return word;
+}
+
+void mmwlSetCountErrorsPerWord(int countWords)
+{
+  countErrorsPerWord = countWords;
+}
+
+int mmwlGetCountErrorsPerWord()
+{
+  return countErrorsPerWord;
 }
