@@ -18,7 +18,7 @@ using std::string;
 
 /** Auswahl der Zeichenmenge (1-8) */
 int selectedCharGroup = 1;
-/** Art der Wortgruppen (fest=MM_FALSE oder variabel=MM_TRUE) */
+/** Art der Wortgruppen (0=fest, 1=variabel) */
 int variableWords = 0;
 /** Länge der festen Wortgruppen */
 int fixedWordLength = 5;
@@ -31,7 +31,7 @@ string charSet;
 /** Länge des Zeichenmenge-Strings */
 int charSetLength = 0;
 /** Array mit den Strings für die Zeichenauswahl */
-char groupString[8][50] = {"Alle Zeichen",
+string groupString[8] = {"Alle Zeichen",
 			   "Nur Buchstaben",
 			   "Nur Zahlen",
 			   "Nur Sonderzeichen",
@@ -39,8 +39,20 @@ char groupString[8][50] = {"Alle Zeichen",
 			   "Buchstaben und Sonderzeichen",
 			   "Zahlen und Sonderzeichen",
 			   "Zeichen eingeben"};
-/** Kalibrierungsmodus, liefert immer nur das Wort "paris". */
-int calibrateMode = MM_FALSE;
+
+/** Modus für das Erzeugen neuer Wörter. */
+int wordMode = MM_WM_RANDOM;
+/** Name der aktuellen Datei, aus der neue Wörter entnommen werden sollen. */
+string fileName;
+/** Enthält die Datei einzelne Worte pro Zeile, die zufällig ausgegeben werden
+ * sollen, oder ist es ein Text der zusammenhängend gegeben wird (0=nein/text, 1=ja/zufällig)?
+ */
+int fileWordsRandom = MM_TRUE;
+/** Sollen bei der Augabe aus einer Datei alle bekannten Zeichen gegeben werden,
+ * oder nur die DTP-relevanten (0=nein/dtp, 1=ja/alle)?
+ */
+int fileWordsExtendedCharset = MM_FALSE;
+
 
 /*--------------------------------------------------- Functions */
 
@@ -108,7 +120,7 @@ char signRandom(void)
 	       return(mapToChar(mmRandom(5)+37));
 	     }
      case 7: return(mmRandom(15)+27);
-     case 8: return(charSetRandom());
+     default: return(charSetRandom());
   }
 
   return(0);
@@ -162,7 +174,7 @@ string getNextWord()
 {
   string word;
 
-  if (calibrateMode == MM_TRUE)
+  if (wordMode == MM_WM_PARIS)
     return string("paris");
 
   int wordLength = fixedWordLength;

@@ -17,6 +17,10 @@
 #define MM_REPEAT 2
 #define MM_CONTINUE 3
 
+#define MM_WM_RANDOM 0
+#define MM_WM_FILE 1
+#define MM_WM_PARIS 2
+
 /*-------------------------------------------------------- Typedefs */
 
 typedef unsigned int keyChar;

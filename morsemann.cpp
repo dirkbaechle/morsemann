@@ -69,7 +69,7 @@ using std::ostringstream;
 const int GROUP_WIDTH = 15;
 const int OPT_LEFT_WIDTH = 19;
 const int OPT_RIGHT_WIDTH = 8;
-const int MENU_WIDTH = 4;
+const int MENU_WIDTH = 6;
 const int INFO_WIDTH = 20;
 
 /*------------------------------------------------ Global variables */
@@ -78,6 +78,14 @@ const int INFO_WIDTH = 20;
 int totalLength = 200;
 /** Gesamtzahl der gemachten Fehler */
 int errorCount = 0;
+/** Soll die Tonhöhe zufällig gewählt werden? (0=nein, 1=ja) */
+int selectMorseFrequencyRandomly = MM_TRUE;
+/** Tonhöhe in Hz falls die Tonhöhe fest gesetzt ist. */
+int fixedMorseFrequency = 800;
+/** Sollen die Optionen/Einstellungen in der INI Datei gespeichert
+ * werden? (0=nein, 1=ja)
+ */
+int saveOptionsToIniFile = MM_TRUE;
 
 /*--------------------------------------------------- Functions */
 
@@ -144,7 +152,10 @@ void byeMessage(void)
 {
   clrscr();
   gotoxy(centerX - 6, centerY);
-  mmslSetFrequency((mmRandom(5) + 6) * 100);
+  if (selectMorseFrequencyRandomly)
+    mmslSetFrequency((mmRandom(5) + 6) * 100);
+  else
+    mmslSetFrequency(fixedMorseFrequency);
   mmslSetDelayFactor(1);
   mmslSetBpm(140);
   mmslPrepareSoundStream();
@@ -333,14 +344,14 @@ void speedSelection(void)
 
     b = getch();
 
-    /* Cursor hoch */
-    if (b == KEY_UP)
+    /* Cursor hoch/rechts */
+    if ((b == KEY_UP) || (b == KEY_RIGHT))
     {
       bpmUp();
     }
 
-    /* Cursor runter */
-    if (b == KEY_DOWN)
+    /* Cursor runter/links */
+    if ((b == KEY_DOWN) || (b == KEY_LEFT))
     {
       bpmDown();
     }
@@ -369,15 +380,15 @@ void delaySelection(void)
 
     b = getch();
 
-    /* Cursor hoch */
-    if (b == KEY_UP)
+    /* Cursor hoch/rechts */
+    if ((b == KEY_UP) || (b == KEY_RIGHT))
     {
       if (delayFactor == 9) delayFactor = 1;
       else ++delayFactor;
     }
 
-    /* Cursor runter */
-    if (b == KEY_DOWN)
+    /* Cursor runter/links */
+    if ((b == KEY_DOWN) || (b == KEY_LEFT))
     {
       if (delayFactor == 1) delayFactor = 9;
       else --delayFactor;
@@ -401,38 +412,47 @@ void lengthSelection(void)
   } while (totalLength < 5);
 }
 
-/** Zeigt die aktuell eingestellten Optionen an.
-@param akt Aktuelle Auswahl
+
+/** Liest einen Dateinamen ein.
 */
-void optionsMenu(int akt)
+void fileNameSelection(void)
 {
   clrscr();
-  writeSelection("*** Optionen ***", centerX-8, centerY-4, 1, 2);
+  writeSelection("Dateiname", centerX-6, centerY-1, 1, 2);
 
-  writeSelection("Zeichen:", centerX-OPT_LEFT_WIDTH, centerY-2, 1, akt);
-  writeSelection("Geschwindigkeit (in BpM):", centerX-OPT_LEFT_WIDTH, centerY-1, 2, akt);
-  writeSelection("Pausenfaktor:", centerX-OPT_LEFT_WIDTH, centerY, 3, akt);
-  writeSelection("Zeichenanzahl:", centerX-OPT_LEFT_WIDTH, centerY+1, 4, akt);
-  writeSelection("Feste Wortgruppen:", centerX-OPT_LEFT_WIDTH, centerY+2, 5, akt);
-  writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY+3, 6, akt);
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
-  writeString(groupString[selectedCharGroup - 1]);
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
-  writeNumber(mmslGetBpm());
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
-  writeNumber(mmslGetDelayFactor());
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
-  writeNumber(totalLength);
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
-  if (variableWords == MM_FALSE)
-  {
-    writeString("Ja (");
-    writeNumber(fixedWordLength);
-    writeString(")");
+  fileName = readString(1, centerY+1, 75, fileName);
+}
+
+/** Zeigt die aktuell eingestellten Optionen für die Morsezeichen an.
+@param akt Aktuelle Auswahl
+*/
+void morseOptionsMenu(int akt)
+{
+  clrscr();
+  writeSelection("*** Optionen ***", centerX-8, centerY-6, 1, 2);
+
+  writeSelection("Geschwindigkeit (in BpM):", centerX-OPT_LEFT_WIDTH, centerY-4, 1, akt);
+  writeSelection("Pausenfaktor:", centerX-OPT_LEFT_WIDTH, centerY-3, 2, akt);
+  writeSelection("Zeichenanzahl:", centerX-OPT_LEFT_WIDTH, centerY-2, 3, akt);
+  writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY-1, 4, akt);
+  writeSelection("Worte erzeugen:", centerX-OPT_LEFT_WIDTH, centerY, 5, akt);
+
+  if (wordMode == MM_WM_RANDOM) {
+    writeSelection("Zeichen:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
+    writeSelection("Feste Wortgruppen:", centerX-OPT_LEFT_WIDTH, centerY+2, 7, akt);
+  } else if (wordMode == MM_WM_FILE) {
+    writeSelection("Dateiname:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
+    writeSelection("Dateimodus:", centerX-OPT_LEFT_WIDTH, centerY+2, 7, akt);
+    writeSelection("Alle Zeichen geben:", centerX-OPT_LEFT_WIDTH, centerY+3, 8, akt);
   }
-  else
-    writeString("Nein (3-8)");
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+3);
+
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-4);
+  writeNumber(mmslGetBpm());
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-3);
+  writeNumber(mmslGetDelayFactor());
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
+  writeNumber(totalLength);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
   switch (confirmChars)
   {
     case 0: writeString("Nein");
@@ -441,67 +461,125 @@ void optionsMenu(int akt)
             break;
   }
 
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
+  if (wordMode == MM_WM_RANDOM) {
+    writeString("Zufällig");
+    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
+    writeString(groupString[selectedCharGroup - 1]);
+    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
+    if (variableWords == MM_FALSE)
+    {
+      writeString("Ja (");
+      writeNumber(fixedWordLength);
+      writeString(")");
+    }
+    else
+      writeString("Nein (3-8)");
+  } else if (wordMode == MM_WM_FILE) {
+    writeString("Aus Datei");
+    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
+    if (!fileName.empty()) {
+      writeString("Vorh.");
+    } else {
+      writeString("Nein");
+    }
+    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
+    if (fileWordsRandom) {
+      writeString("Worte");
+    } else {
+      writeString("Text");
+    }
+    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+3);
+    if (fileWordsExtendedCharset) {
+      writeString("Ja");
+    } else {
+      writeString("Nein");
+    }
+  } else {
+    writeString("PARIS");
+  }
+
   /* Zeichenmenge anzeigen, falls Option "Zeichen eingeben" gewählt */
   if (selectedCharGroup == 8)
   {
-    writeSelection("Zeichenmenge:", centerX-6, centerY+5, 1, 2);
+    writeSelection("Zeichenmenge:", centerX-6, centerY+7, 1, 2);
     if ((centerX-(charSetLength/2)) > 0)
-      writeSelection(charSet.c_str(), centerX-(charSetLength/2), centerY+6, 1, 2);
+      writeSelection(charSet.c_str(), centerX-(charSetLength/2), centerY+8, 1, 2);
     else
-      writeSelection(charSet.c_str(), 0, centerY+6, 1, 2);
+      writeSelection(charSet.c_str(), 0, centerY+8, 1, 2);
   }
 
 }
 
 
-/** Auswahl für die Optionen.
+/** Auswahl für die Morsezeichen-Optionen.
 */
-void optionsSelection(void)
+void morseOptionsSelection(void)
 {
   keyChar b = '0';
   int currentOption = 1;
 
   while (b != KEY_BACKSPACE)
   {
-    optionsMenu(currentOption);
+    morseOptionsMenu(currentOption);
     b = getch();
 
     /* Cursor hoch */
     if (b == KEY_UP)
     {
-      if (currentOption == 1) currentOption = 6;
+      if (currentOption == 1) {
+        if (wordMode == MM_WM_RANDOM)
+          currentOption = 7;
+        else if (wordMode == MM_WM_FILE)
+          currentOption = 8;
+        else
+          currentOption = 5;
+      }
       else --currentOption;
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
-      if (currentOption == 6) currentOption = 1;
-      else ++currentOption;
+      if (wordMode == MM_WM_RANDOM) {
+        if (currentOption == 7) currentOption = 1;
+        else ++currentOption;
+      } else if (wordMode == MM_WM_FILE) {
+        if (currentOption == 8) currentOption = 1;
+        else ++currentOption;
+      } else {
+        if (currentOption == 5) currentOption = 1;
+        else ++currentOption;
+      }
     }
 
     /* Cursor rechts */
     if (b == KEY_RIGHT)
     {
-      if ((currentOption == 5) &&
-          (variableWords == MM_FALSE))
-      {
-        if (fixedWordLength < 8) 
-          ++fixedWordLength;
-        else
-          fixedWordLength = 2;
-      } 
+      if (wordMode == MM_WM_RANDOM) {
+        if ((currentOption == 7) &&
+            (variableWords == MM_FALSE))
+        {
+          if (fixedWordLength < 8) 
+            ++fixedWordLength;
+          else
+            fixedWordLength = 2;
+        } 
+      }
     }
 
     /* Cursor links */
     if (b == KEY_LEFT)
     {
-      if (currentOption == 5)
-      {
-        if (fixedWordLength > 2) 
-          --fixedWordLength;
-        else
-          fixedWordLength = 8;
+      if (wordMode == MM_WM_RANDOM) {
+        if ((currentOption == 7) &&
+            (variableWords == MM_FALSE))
+        {
+          if (fixedWordLength > 2) 
+            --fixedWordLength;
+          else
+            fixedWordLength = 8;
+        }
       } 
     }
 
@@ -509,17 +587,219 @@ void optionsSelection(void)
     {
       switch (currentOption)
       {
-        case 1: charGroupSelection();
+        case 1: speedSelection();
           break;
-        case 2: speedSelection();
+        case 2: delaySelection();
           break;
-        case 3: delaySelection();
+        case 3: lengthSelection();
           break;
-        case 4: lengthSelection();
+        case 4: confirmChars = 1 - confirmChars;
           break;
-        case 5: variableWords = 1 - variableWords;
+        case 5: if (wordMode == MM_WM_PARIS)
+                  wordMode = MM_WM_RANDOM;
+                else
+                  wordMode = 1 - wordMode;
           break;
-        case 6: confirmChars = 1 - confirmChars;
+        case 6: if (wordMode == MM_WM_RANDOM)
+                  charGroupSelection();
+                else if (wordMode == MM_WM_FILE)
+                  fileNameSelection();
+          break;
+        case 7: if (wordMode == MM_WM_RANDOM)
+                  variableWords = 1 - variableWords;
+                else if (wordMode == MM_WM_FILE)
+                  fileWordsRandom = 1 - fileWordsRandom;
+          break;
+        default: fileWordsExtendedCharset = 1 - fileWordsExtendedCharset;
+          break;
+      }
+
+    }
+  }
+}
+
+/** Auswahl der festen Tonhöhe.
+*/
+void frequencySelection(void)
+{
+  keyChar b = '0';
+
+  clrscr();
+  writeSelection("Auswahl der Tonhöhe", centerX-10, centerY-1, 1, 2);
+
+  textModusSelect();
+
+  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
+  {
+    gotoxy(centerX-3, centerY+1);
+
+    if (fixedMorseFrequency < 1000)
+      writeString(" ");
+    writeNumber(fixedMorseFrequency);
+    writeString(" Hz");
+
+    b = getch();
+
+    /* Cursor hoch/rechts */
+    if ((b == KEY_UP) || (b == KEY_RIGHT))
+    {
+      if (fixedMorseFrequency < 1000)
+        fixedMorseFrequency += 100;
+      else
+        fixedMorseFrequency = 600;
+    }
+
+    /* Cursor runter/links */
+    if ((b == KEY_DOWN) || (b == KEY_LEFT))
+    {
+      if (fixedMorseFrequency > 600)
+        fixedMorseFrequency -= 100;
+      else
+        fixedMorseFrequency = 1000;
+    }
+  }
+
+  textModusNormal();
+}
+
+/** Auswahl der Sound-Shaping Methode.
+*/
+void soundShapingSelection(void)
+{
+  keyChar b = '0';
+
+  int selectedShaping;
+  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
+  {
+
+    clrscr();
+    textModusNormal();
+    writeSelection("Auswahl des Zeichen-Shapings", centerX-14, centerY-1, 1, 2);
+
+    textModusSelect();
+    gotoxy(centerX-11, centerY+1);
+
+    selectedShaping = mmslGetSmoothening();
+    switch (selectedShaping) {
+      case 1:  writeString("-2x^3 + 3x^2");
+        break;
+      case 2:  writeString("6x^5 - 15x^4 + 10x^3");
+        break;
+      case 3:  writeString("sin(PI/2*x)^2");
+        break;
+      default: writeString("Aus");
+        break;
+    }
+
+    b = getch();
+
+    /* Cursor hoch/rechts */
+    if ((b == KEY_UP) || (b == KEY_RIGHT))
+    {
+      if (selectedShaping < 3)
+        selectedShaping += 1;
+      else
+        selectedShaping = 0;
+      mmslSetSmoothening(selectedShaping);
+    }
+
+    /* Cursor runter/links */
+    if ((b == KEY_DOWN) || (b == KEY_LEFT))
+    {
+      if (selectedShaping > 0)
+        selectedShaping -= 1;
+      else
+        selectedShaping = 3;
+      mmslSetSmoothening(selectedShaping);
+    }
+  }
+
+  textModusNormal();
+}
+
+/** Zeigt die aktuell eingestellten allgemeinen Optionen an.
+@param akt Aktuelle Auswahl
+*/
+void commonOptionsMenu(int akt)
+{
+  clrscr();
+  writeSelection("*** Einstellungen ***", centerX-8, centerY-4, 1, 2);
+
+  writeSelection("Wahl der Tonhöhe", centerX-OPT_LEFT_WIDTH, centerY-2, 1, akt);
+  writeSelection("Feste Tonhöhe (in Hz):", centerX-OPT_LEFT_WIDTH, centerY-1, 2, akt);
+  writeSelection("Zeichen-Shaping:", centerX-OPT_LEFT_WIDTH, centerY, 3, akt);
+  writeSelection("Zähle Fehler pro:", centerX-OPT_LEFT_WIDTH, centerY+1, 4, akt);
+  writeSelection("Optionen speichern:", centerX-OPT_LEFT_WIDTH, centerY+2, 5, akt);
+
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
+  if (selectMorseFrequencyRandomly == MM_TRUE)
+    writeString("zufällig");
+  else
+    writeString("fest");
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
+  writeNumber(fixedMorseFrequency);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
+  switch (mmslGetSmoothening()) {
+    case 1:  writeString("x^3");
+      break;
+    case 2:  writeString("x^5");
+      break;
+    case 3:  writeString("sin");
+      break;
+    default: writeString("Aus");
+      break;
+  }
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
+  if (mmwlGetCountErrorsPerWord())
+    writeString("Wort");
+  else
+    writeString("Buchstabe");
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
+  if (saveOptionsToIniFile == MM_FALSE)
+    writeString("Nein");
+  else
+    writeString("Ja");
+}
+
+/** Auswahl für die allgemeinen Einstellungen.
+*/
+void commonOptionsSelection(void)
+{
+  keyChar b = '0';
+  int currentOption = 1;
+
+  while (b != KEY_BACKSPACE)
+  {
+    commonOptionsMenu(currentOption);
+    b = getch();
+
+    /* Cursor hoch */
+    if (b == KEY_UP)
+    {
+      if (currentOption == 1) currentOption = 5;
+      else --currentOption;
+    }
+
+    /* Cursor runter */
+    if (b == KEY_DOWN)
+    {
+      if (currentOption == 5) currentOption = 1;
+      else ++currentOption;
+    }
+
+    if (b == ENTER_CHAR)
+    {
+      switch (currentOption)
+      {
+        case 1: selectMorseFrequencyRandomly = 1 - selectMorseFrequencyRandomly;
+          break;
+        case 2: frequencySelection();
+          break;
+        case 3: soundShapingSelection();
+          break;
+        case 4: mmwlSetCountErrorsPerWord(1 - mmwlGetCountErrorsPerWord());
+          break;
+        case 5: saveOptionsToIniFile = 1 - saveOptionsToIniFile;
           break;
       }
     }
@@ -767,8 +1047,9 @@ void mainMenu(int current)
   writeSelection("Dirk Bächle (dl9obn@darc.de), 2003-03-07",centerX-20, screenY, 1, 2);
 
   writeSelection("Start", centerX-MENU_WIDTH, centerY-1, 1, current);
-  writeSelection("Optionen", centerX-MENU_WIDTH, centerY, 2, current);
-  writeSelection("Beenden", centerX-MENU_WIDTH, centerY+1, 3, current);
+  writeSelection("Morsezeichen", centerX-MENU_WIDTH, centerY, 2, current);
+  writeSelection("Einstellungen", centerX-MENU_WIDTH, centerY+1, 3, current);
+  writeSelection("Beenden", centerX-MENU_WIDTH, centerY+2, 4, current);
 }
 
 /** Das Hauptmenü
@@ -786,26 +1067,31 @@ void mainSelection(void)
       /* Cursor hoch */
       if (b == KEY_UP)
       {
-        if (currentSelection == 1) currentSelection = 3;
+        if (currentSelection == 1) currentSelection = 4;
         else --currentSelection;
       }
 
       /* Cursor runter */
       if (b == KEY_DOWN)
       {
-        if (currentSelection == 3) currentSelection = 1;
+        if (currentSelection == 4) currentSelection = 1;
         else ++currentSelection;
       }
     if (b == ENTER_CHAR)
     {
       switch (currentSelection)
       {
-        case 1: mmslSetFrequency((mmRandom(5) + 6) * 100);
-          outputMorseCode();
+        case 1: if (selectMorseFrequencyRandomly == MM_TRUE)
+                  mmslSetFrequency((mmRandom(5) + 6) * 100);
+                else
+                  mmslSetFrequency(fixedMorseFrequency);
+                outputMorseCode();
           break;
-        case 2: optionsSelection();
+        case 2: morseOptionsSelection();
           break;
-        case 3: return;
+        case 3: commonOptionsSelection();
+          break;
+        case 4: return;
       }
     }
   }
