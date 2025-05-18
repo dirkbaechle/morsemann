@@ -43,6 +43,7 @@ von Morsezeichen (CW).
 #include "mmsound.h"
 #include "mmscreen.h"
 #include "mmword.h"
+#include "mmconfig.h"
 #include "global.h"
 
 #include <stdio.h>
@@ -55,6 +56,7 @@ von Morsezeichen (CW).
 #include <ncurses.h>
 #include <time.h>
 #include <signal.h>
+#include "sys/stat.h"
 
 using std::map;
 using std::string;
@@ -1116,6 +1118,29 @@ int main(void)
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
 
+  MMConfig config;
+
+  string homePath;
+  const char *v = getenv("HOME");
+  if( v != NULL ) 
+    homePath = string( v );
+  string configPath;
+  if (!homePath.empty())
+  {
+    configPath = homePath + "/.config/";
+    // Does this path actually exist?
+    struct stat sb;
+    if (stat(configPath.c_str(), &sb) != 0)
+    {
+      // Else set config path to empty again
+      configPath = "";
+    }
+  }
+  configPath += "mmconfig.ini";
+
+  config.readFromFile(configPath);
+  config.writeFile(configPath);
+ 
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
   (void) initscr();      /* initialize the curses library */

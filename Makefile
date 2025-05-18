@@ -27,13 +27,13 @@ SOUNDLIBS = -lasound
 #
 
 TARGET = morsemann
-CINCLUDES = -I./mmsound -I./mmscreen -I./mmword -I.
-CLIBS = -L./mmscreen -lmmscreen $(CURSESLIB) -L./mmsound -lmmsound $(SOUNDLIBS) -L./mmword -lmmword
+CINCLUDES = -I./mmsound -I./mmscreen -I./mmword -I./inih -I./inih/cpp -I.
+CLIBS = -L./mmscreen -lmmscreen $(CURSESLIB) -L./mmsound -lmmsound $(SOUNDLIBS) -L./mmword -lmmword -L./inih -linih
 
 export CXXFLAGS
 
-all: $(TARGET).cpp mmsound/libmmsound.a mmscreen/libmmscreen.a mmword/libmmword.a
-	$(CXX) $(TARGET).cpp -o $(TARGET) $(CXXFLAGS) $(CINCLUDES) $(CLIBS)
+all: $(TARGET).cpp mmconfig.cpp mmsound/libmmsound.a mmscreen/libmmscreen.a mmword/libmmword.a inih/libinih.a 
+	$(CXX) $(TARGET).cpp mmconfig.cpp -o $(TARGET) $(CXXFLAGS) $(CINCLUDES) $(CLIBS)
 
 mmsound/libmmsound.a:
 	make -C mmsound
@@ -43,6 +43,9 @@ mmscreen/libmmscreen.a:
 
 mmword/libmmword.a:
 	make -C mmword
+
+inih/libinih.a:
+	make -C inih
 
 allusers:
 	chown root:root ./morsemann
@@ -56,4 +59,4 @@ clean-dist:
 	make -C mmsound clean
 	make -C mmscreen clean
 	make -C mmword clean
-
+	make -C inih clean
