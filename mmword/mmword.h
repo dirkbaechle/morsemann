@@ -18,7 +18,7 @@
 extern int selectedCharGroup;
 extern int variableWords;
 extern int fixedWordLength;
-extern int confirmChars;
+extern int confirmWords;
 extern std::string charSet;
 extern int charSetLength;
 extern std::string groupString[8];

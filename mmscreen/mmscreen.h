@@ -27,6 +27,8 @@ extern void writeString(const std::string& str);
 extern void writeStringW(WINDOW *curwin, const std::string& str);
 extern void writeNumber(int number);
 extern void writeNumberW(WINDOW *curwin, int number);
+extern void writeNumberULong(unsigned long int number);
+extern void writeNumberWULong(WINDOW *curwin, unsigned long int number);
 extern void writeChar(char b);
 extern void writeCharW(WINDOW *curwin, char b);
 
@@ -44,7 +46,7 @@ extern void showCursor(void);
 extern void writeSelection(const std::string& str, int xpos, int ypos, int stringID, int selected);
 extern std::string readString(int xpos, int ypos, int max, const std::string& str);
 extern int confirmString(WINDOW *curwin, int xpos, int ypos, int max, std::string& str);
-extern int readNumber(int xpos, int ypos, int max, int number);
+extern unsigned long int readNumber(int xpos, int ypos, int max, unsigned long int number);
 
 #endif
 

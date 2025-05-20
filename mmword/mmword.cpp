@@ -23,10 +23,10 @@ int variableWords = 0;
 /** Länge der festen Wortgruppen */
 int fixedWordLength = 5;
 /** Bestätigung/Abfrage der einzelnen Wörter? (0=nein, 1=ja) */
-int confirmChars = 0;
+int confirmWords = 0;
 /** Werden Fehler pro Wort gezählt? (0=nein jeder Buchstabe einzeln, 1=ja) */
 int countErrorsPerWord = MM_TRUE;
-/** Zeichenmenge als String (Auswahl = 8) */
+/** Zeichenmenge als String (Auswahl Zeichenmenge = 8) */
 string charSet;
 /** Länge des Zeichenmenge-Strings */
 int charSetLength = 0;
@@ -40,7 +40,7 @@ string groupString[8] = {"Alle Zeichen",
 			   "Zahlen und Sonderzeichen",
 			   "Zeichen eingeben"};
 
-/** Modus für das Erzeugen neuer Wörter. */
+/** Modus für das Erzeugen neuer Wörter. (0=zufällig, 1=aus Datei, 2=PARIS)*/
 int wordMode = MM_WM_RANDOM;
 /** Name der aktuellen Datei, aus der neue Wörter entnommen werden sollen. */
 string fileName;

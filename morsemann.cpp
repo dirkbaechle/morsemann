@@ -77,7 +77,7 @@ const int INFO_WIDTH = 20;
 /*------------------------------------------------ Global variables */
 
 /** Gesamtzahl der zu gebenden Buchstaben */
-int totalLength = 200;
+unsigned long int totalLength = 200;
 /** Gesamtzahl der gemachten Fehler */
 int errorCount = 0;
 /** Soll die Tonhöhe zufällig gewählt werden? (0=nein, 1=ja) */
@@ -88,6 +88,9 @@ int fixedMorseFrequency = 800;
  * werden? (0=nein, 1=ja)
  */
 int saveOptionsToIniFile = MM_TRUE;
+
+MMConfig config;
+string configPath;
 
 /*--------------------------------------------------- Functions */
 
@@ -410,7 +413,7 @@ void lengthSelection(void)
   writeSelection("Gesamtanzahl der Buchstaben (mindestens 5!)", centerX-22, centerY-1, 1, 2);
   do
   {
-    totalLength = readNumber(centerX-2, centerY+1, 4, totalLength);
+    totalLength = readNumber(centerX-2, centerY+1, 9, totalLength);
   } while (totalLength < 5);
 }
 
@@ -453,9 +456,9 @@ void morseOptionsMenu(int akt)
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-3);
   writeNumber(mmslGetDelayFactor());
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
-  writeNumber(totalLength);
+  writeNumberULong(totalLength);
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
-  switch (confirmChars)
+  switch (confirmWords)
   {
     case 0: writeString("Nein");
             break;
@@ -595,7 +598,7 @@ void morseOptionsSelection(void)
           break;
         case 3: lengthSelection();
           break;
-        case 4: confirmChars = 1 - confirmChars;
+        case 4: confirmWords = 1 - confirmWords;
           break;
         case 5: if (wordMode == MM_WM_PARIS)
                   wordMode = MM_WM_RANDOM;
@@ -878,7 +881,7 @@ int handleConfirmInput(WINDOW *confirmwin, WINDOW *infowin, const string &lastWo
 */
 void outputMorseCode(void)
 {
-  int currentLength = 0;
+  unsigned long int currentLength = 0;
   int lineCount = 0;
   int lineStop = 0;
   int lineNumber = 0;
@@ -896,7 +899,7 @@ void outputMorseCode(void)
   WINDOW *mainwin = nullptr;
   WINDOW *infowin = nullptr;
   WINDOW *confirmwin = nullptr;
-  if (confirmChars == MM_TRUE)
+  if (confirmWords == MM_TRUE)
   {
     mainwin = newwin(screenY - 4, screenX, 0, 0);
     infowin = newwin(1, screenX, screenY - 4, 0);
@@ -925,7 +928,7 @@ void outputMorseCode(void)
 
   do
   {
-    if (confirmChars == MM_TRUE)
+    if (confirmWords == MM_TRUE)
     {
       //
       // Wort in Morsezeichen geben, mit Abfrage bzw.
@@ -992,7 +995,7 @@ void outputMorseCode(void)
     {
       lineCount = lastWord.size();
       ++lineNumber;
-      if (confirmChars == MM_TRUE)
+      if (confirmWords == MM_TRUE)
         lineStop = screenY - 5;
       else
         lineStop = screenY - 2;
@@ -1013,13 +1016,13 @@ void outputMorseCode(void)
 
   writeStringW(mainwin, "\n\r+");
   mmslMorseWord("+");
-  if (confirmChars == MM_TRUE)
+  if (confirmWords == MM_TRUE)
   {
     writeStringW(mainwin, "   (");
     writeNumberW(mainwin, errorCount);
     writeStringW(mainwin, " Fehler)");
   }
-  if (confirmChars == MM_TRUE) 
+  if (confirmWords == MM_TRUE) 
     wmove(mainwin, screenY - 6, centerX - 15);
   else
     wmove(mainwin, screenY - 4, centerX - 15);
@@ -1034,7 +1037,7 @@ void outputMorseCode(void)
 
   delwin(mainwin);
   delwin(infowin);
-  if (confirmChars == MM_TRUE)
+  if (confirmWords == MM_TRUE)
     delwin(confirmwin);
 
 }
@@ -1099,6 +1102,16 @@ void mainSelection(void)
   }
 }
 
+void setConfigValuesToSystem(const MMConfig &config)
+{
+  mmslSetBpm(config.speed);
+}
+
+void setConfigValuesFromSystem(MMConfig &config)
+{
+  config.speed = mmslGetBpm();
+}
+
 /** Beendet den ``ncurses''-Modus.
 */
 static void finish(int /* sig */)
@@ -1115,16 +1128,15 @@ static void finish(int /* sig */)
 */
 int main(void)
 {
+  // TODO Add option for outputting default config file to stdout (-d --dump-config)
+  // TODO Add option for setting path to config file (-c --config)
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
-
-  MMConfig config;
 
   string homePath;
   const char *v = getenv("HOME");
   if( v != NULL ) 
     homePath = string( v );
-  string configPath;
   if (!homePath.empty())
   {
     configPath = homePath + "/.config/";
@@ -1139,7 +1151,7 @@ int main(void)
   configPath += "mmconfig.ini";
 
   config.readFromFile(configPath);
-  config.writeFile(configPath);
+  setConfigValuesToSystem(config);
  
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
@@ -1176,8 +1188,15 @@ int main(void)
   clrscr();
   srandom((unsigned int) time(NULL));
   mainSelection();
-  confirmChars = 0;
   textModusNormal();
+
+  if (config.saveOptions == MM_TRUE)
+  {
+    setConfigValuesFromSystem(config);
+    config.writeFile(configPath);
+  }
+
+  confirmWords = 0;
   byeMessage();
   showCursor();
 
