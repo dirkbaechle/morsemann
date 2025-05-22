@@ -48,6 +48,8 @@ string fileName;
  * sollen, oder ist es ein Text der zusammenhängend gegeben wird (0=nein/text, 1=ja/zufällig)?
  */
 int fileWordsRandom = MM_TRUE;
+/** Position within the currently set file (counted per word). */
+unsigned long int filePosition = 0;
 /** Sollen bei der Augabe aus einer Datei alle bekannten Zeichen gegeben werden,
  * oder nur die DTP-relevanten (0=nein/dtp, 1=ja/alle)?
  */

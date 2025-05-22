@@ -50,17 +50,21 @@ von Morsezeichen (CW).
 #include <stdlib.h>
 #include <map>
 #include <string>
+#include <iostream>
 #include <sstream>
 
 #include <unistd.h>
 #include <ncurses.h>
 #include <time.h>
 #include <signal.h>
+#include <string.h>
 #include "sys/stat.h"
 
 using std::map;
 using std::string;
 using std::ostringstream;
+using std::cout;
+using std::endl;
 
 /*--------------------------------------------------------- Defines */
 
@@ -1105,11 +1109,61 @@ void mainSelection(void)
 void setConfigValuesToSystem(const MMConfig &config)
 {
   mmslSetBpm(config.speed);
+  mmslSetDelayFactor(config.farnsworthFactor);
+  totalLength = config.totalLength;
+  confirmWords = config.confirmWords;
+  wordMode = config.wordMode; 
+  // random
+  selectedCharGroup = config.charGroup;
+  charSet = config.charSet;
+  charSetLength = charSet.size();
+  variableWords = config.variableWordLength;
+  fixedWordLength = config.fixedWordLength;
+  // file
+  fileName = config.fileName;
+  fileWordsRandom = config.fileModeWords;
+  filePosition = config.filePosition;
+  fileWordsExtendedCharset = config.fileUseAllChars;
+
+  //
+  // Common
+  //
+  selectMorseFrequencyRandomly = config.randomFrequency;
+  fixedMorseFrequency = config.fixedMorseFrequency;
+  mmslSetSmoothening(config.soundShaping);
+  mmwlSetCountErrorsPerWord(config.errorsPerWord);
+  saveOptionsToIniFile = config.saveOptions;
 }
 
 void setConfigValuesFromSystem(MMConfig &config)
 {
+  //
+  // Morse
+  //
   config.speed = mmslGetBpm();
+  config.farnsworthFactor = mmslGetDelayFactor();
+  config.totalLength = totalLength;
+  config.confirmWords =  confirmWords;
+  config.wordMode = wordMode;
+  // random
+  config.charGroup = selectedCharGroup;
+  config.charSet = charSet;
+  config.variableWordLength = variableWords;
+  config.fixedWordLength = fixedWordLength;
+  // file
+  config.fileName = fileName;
+  config.fileModeWords = fileWordsRandom;
+  config.filePosition = filePosition;
+  config.fileUseAllChars = fileWordsExtendedCharset;
+
+  //
+  // Common
+  //
+  config.randomFrequency = selectMorseFrequencyRandomly;
+  config.fixedMorseFrequency = fixedMorseFrequency;
+  config.soundShaping = mmslGetSmoothening();
+  config.errorsPerWord = mmwlGetCountErrorsPerWord();
+  config.saveOptions = saveOptionsToIniFile;
 }
 
 /** Beendet den ``ncurses''-Modus.
@@ -1126,12 +1180,16 @@ static void finish(int /* sig */)
 
 /** Das Hauptprogramm.
 */
-int main(void)
+int main(int argc, char *argv[])
 {
-  // TODO Add option for outputting default config file to stdout (-d --dump-config)
-  // TODO Add option for setting path to config file (-c --config)
-  if (!mmslInitSoundSystem(MMSL_ALSA))
-    return 1;
+  if ((argc > 1) &&
+      ((strcmp(argv[1], "-d") == 0) || 
+       (strcmp(argv[1], "--dump-config") == 0)))
+  {
+    MMConfig c;
+    cout << c.toString() << endl;
+    return 0;
+  }
 
   string homePath;
   const char *v = getenv("HOME");
@@ -1150,9 +1208,19 @@ int main(void)
   }
   configPath += "mmconfig.ini";
 
+  if ((argc > 2) &&
+      ((strcmp(argv[1], "-c") == 0) || 
+       (strcmp(argv[1], "--config") == 0)))
+  {
+    configPath = argv[2];
+  }
+
   config.readFromFile(configPath);
   setConfigValuesToSystem(config);
  
+  if (!mmslInitSoundSystem(MMSL_ALSA))
+    return 1;
+
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
   (void) initscr();      /* initialize the curses library */
