@@ -776,6 +776,14 @@ void commonOptionsSelection(void)
 {
   keyChar b = '0';
   int currentOption = 1;
+  // Wir prüfen hier ob sich die Einstellung zum
+  // "Speichern in Config-Datei" ändert. Falls ja,
+  // schreiben wir die Datei sofort neu (s. unten).
+  // Dies ist besonders wichtig wenn man die Option
+  // auf "aus" stellt, weil wir ja trotzdem die neue
+  // Einstellung für den nächsten Programmstart
+  // behalten möchten.
+  int oldSaveOptions = saveOptionsToIniFile;
 
   while (b != KEY_BACKSPACE)
   {
@@ -812,6 +820,16 @@ void commonOptionsSelection(void)
           break;
       }
     }
+  }
+
+  // Hat sich "Speichern in Config-Datei" geändert?
+  if (oldSaveOptions != saveOptionsToIniFile)
+  {
+    // Ja, also sofort die neue Config schreiben
+    MMConfig savedConfig;
+    savedConfig.readFromFile(configPath);
+    savedConfig.saveOptions = saveOptionsToIniFile;
+    savedConfig.writeFile(configPath);
   }
 }
 
