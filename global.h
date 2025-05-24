@@ -21,6 +21,12 @@
 #define MM_WM_FILE 1
 #define MM_WM_PARIS 2
 
+#define MM_UTF8_CHAR 0
+#define MM_UTF8_INVALID_STARTBYTE 1
+#define MM_UTF8_INVALID_CONTBYTE 2
+#define MM_UTF8_EOF 3
+#define MM_UTF8_WORD 4
+
 /*-------------------------------------------------------- Typedefs */
 
 typedef unsigned int keyChar;

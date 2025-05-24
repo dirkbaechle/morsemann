@@ -43,6 +43,7 @@ von Morsezeichen (CW).
 #include "mmsound.h"
 #include "mmscreen.h"
 #include "mmword.h"
+#include "utf8file.h"
 #include "mmconfig.h"
 #include "global.h"
 
@@ -1226,11 +1227,20 @@ int main(int argc, char *argv[])
   }
   configPath += "mmconfig.ini";
 
-  if ((argc > 2) &&
-      ((strcmp(argv[1], "-c") == 0) || 
-       (strcmp(argv[1], "--config") == 0)))
+  if (argc > 2)
   {
-    configPath = argv[2];
+    if (((strcmp(argv[1], "-c") == 0) || 
+         (strcmp(argv[1], "--config") == 0)))
+    {
+      configPath = argv[2];
+    }
+
+    if (((strcmp(argv[1], "-p") == 0) || 
+         (strcmp(argv[1], "--parse-file") == 0)))
+    {
+      parseUtf8FileToStdout(string(argv[2]));
+      return 0;
+    }
   }
 
   config.readFromFile(configPath);
