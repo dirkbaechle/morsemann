@@ -1234,7 +1234,13 @@ int main(int argc, char *argv[])
     {
       configPath = argv[2];
     }
+  }
 
+  config.readFromFile(configPath);
+  setConfigValuesToSystem(config);
+ 
+  if (argc > 2)
+  {
     if (((strcmp(argv[1], "-p") == 0) || 
          (strcmp(argv[1], "--parse-file") == 0)))
     {
@@ -1243,9 +1249,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  config.readFromFile(configPath);
-  setConfigValuesToSystem(config);
- 
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
 

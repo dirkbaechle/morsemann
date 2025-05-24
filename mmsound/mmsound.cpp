@@ -565,7 +565,7 @@ const map<int, string> cwCode = {
 {44, "--..--"},  // ,
 {46, ".-.-.-"},  // .
 {63, "..--.."},  // ?
-{47, "-..-."},   // !
+{47, "-..-."},   // /
 {61, "-...-"},   // =
 // Start der Zeichen die wir normalerweise nicht im Morsetext ausgeben
 {33, "-.-.--"},  // !

@@ -29,6 +29,9 @@ std::ifstream file;
 int utf8ParseMode = PM_VOID;
 // Das letzte gelesene UTF8 Zeichen.
 unsigned char utf8LastChar = 0;
+int utf8LastCharValid = MM_FALSE;
+// Liste der erlaubten Sonderzeichen im ASCII-Bereich (1 Byte)
+string punctuationChars = ",.?/=!\"$'()+-:;@`";
 
 /*--------------------------------------------------- Functions */
 
@@ -165,7 +168,8 @@ string readUtf8Word(int &error)
             c += 32;
           }
 
-          if (utf8ParseMode == PM_PUNCT)
+          if ((utf8ParseMode == PM_PUNCT) &&
+              (utf8LastCharValid == MM_TRUE))
           {
             word += utf8LastChar;
           }
@@ -175,18 +179,74 @@ string readUtf8Word(int &error)
         else
         {
           // Anderes Zeichen
-
+          std::size_t found = punctuationChars.find(c);
+          if (found != string::npos)
+          {
+            if (fileWordsExtendedCharset == MM_FALSE)
+            {
+              // DTP-Modus, nur hinzufügen wenn eines
+              // der ersten 5 Punktuationszeichen...
+              if (found < 5)
+              {
+                word += c;
+              }
+              else
+              {
+                if (utf8ParseMode == PM_WORD)
+                {
+                  utf8ParseMode = PM_PUNCT;
+                  error = MM_UTF8_WORD;
+                  return word;
+                }
+              }
+            }
+            else
+            {
+              word += c;
+            }
+            utf8ParseMode = PM_PUNCT;
+          }
         }
         utf8LastChar = c;
+        utf8LastCharValid = MM_TRUE;
       }
       else
       {
-        // treat as punctuation char
-        if (utf8ParseMode == PM_WORD)
+        // Prüfen auf Umlaute
+        if ((utf8Char.size() == 2) &&
+            (((unsigned char) utf8Char[0]) == 195))
         {
-          utf8ParseMode = PM_PUNCT;
+          unsigned int secondByte = (unsigned char) utf8Char[1];
+
+          switch (secondByte)
+          {
+            case 164: // ä
+            case 132:
+                word += "ae";
+                utf8ParseMode = PM_WORD;
+                break;
+            case 182: // ö
+            case 150:
+                word += "oe";
+                utf8ParseMode = PM_WORD;
+                break;
+            case 188: // ü
+            case 156:
+                word += "ue";
+                utf8ParseMode = PM_WORD;
+                break;
+            case 159: // ß
+                word += "ss";
+                utf8ParseMode = PM_WORD;
+                break;
+          }
         }
-        utf8ParseMode = PM_SPACE;
+        else
+        {
+          // Behandeln als Leerzeichen
+          utf8ParseMode = PM_SPACE;
+        }
+        utf8LastCharValid = MM_FALSE;
       }
     }
   }
