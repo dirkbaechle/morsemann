@@ -72,6 +72,27 @@ void writeNumberW(WINDOW *curwin, int number)
   wrefresh(curwin);
 }
 
+/** Schreibt die Zahl \a number an die aktuelle
+Position auf dem Bildschirm.
+@param number Zahl
+*/
+void writeNumberULong(unsigned long int number)
+{
+  printw("%lu", number);
+  refresh();
+}
+
+/** Schreibt die Zahl \a number an die aktuelle
+Position auf dem Fenster \a curwin.
+@param curwin Fenster für die Ausgabe
+@param number Zahl
+*/
+void writeNumberWULong(WINDOW *curwin, unsigned long int number)
+{
+  wprintw(curwin, "%lu", number);
+  wrefresh(curwin);
+}
+
 /** Schreibt den Buchstaben \a b an die aktuelle
 Position auf dem Bildschirm.
 @param b Buchstabe
@@ -378,7 +399,7 @@ max Stellen linksbündig ein.
 @param number Aktuelle Nummer
 @return Neue Nummer
 */
-int readNumber(int xpos, int ypos, int max, int number)
+unsigned long int readNumber(int xpos, int ypos, int max, unsigned long int number)
 {
   keyChar letter = '0';
   // Int zu string konvertieren

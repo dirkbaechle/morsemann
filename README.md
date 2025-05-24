@@ -71,10 +71,9 @@ starten (er wird aber im Root-Modus ausgeführt)...
 Beschwert sich `make' darüber, dass es den Kompiler `gcc' nicht finden
 konnte, so haben Sie zwei Möglichkeiten: 
 
-1. Den `gcc` installieren.
-2. Sie editieren das `Makefile` und setzen die Variable `CC` auf den
-C-Kompiler, der in Ihrer Linux-Distribution installiert ist
-(z.B. `cc`).
+1. Den `g++` installieren.
+2. Sie editieren das `Makefile` und setzen die Variable `CXX` auf den
+C++-Kompiler, der in Ihrer Linux-Distribution installiert ist.
 
 Falls der Linker die Library `ncurses` nicht finden kann, so haben Sie
 diese wahrscheinlich nicht installiert. Erneut haben Sie zwei Optionen:
@@ -103,12 +102,15 @@ werden. Lesen Sie bitte zu diesem Zweck die Anleitung von "Doxygen".
 
 Die Dateien `beep.h`, `beepLinux.c` und `alarm.[ch]` wurden 
 unverändert dem Programm `morse` von Joe Dellinger entnommen. 
-Jeglicher Dank, dafür dass man unter Linux die Morsezeichen auch
-hört und nicht nur sieht, gebührt daher Joe Dellinger,
-Scott Seligman und John Paul Morrison.
+Jeglicher Dank, dafür dass man unter Linux die Morsezeichen 
+im PC-Speaker auch hört und nicht nur sieht, gebührt daher
+Joe Dellinger, Scott Seligman und John Paul Morrison.
 
+Für die Verwaltung des Config-Files wurde eine Version des
+Paketes "inih" von Ben Hoyt (https://github.com/benhoyt/inih,
+7914ad7f4f43, 2025-03-17 02:28:26) benutzt.
 
-Dirk Bächle, 2003-03-07
+Dirk Bächle, 2025-05-18
 
 
 ## Anleitung

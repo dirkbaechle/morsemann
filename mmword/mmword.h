@@ -18,10 +18,16 @@
 extern int selectedCharGroup;
 extern int variableWords;
 extern int fixedWordLength;
-extern int confirmChars;
+extern int confirmWords;
 extern std::string charSet;
 extern int charSetLength;
-extern char groupString[8][50];
+extern std::string groupString[8];
+
+extern int wordMode;
+extern std::string fileName;
+extern int fileWordsRandom;
+extern unsigned long int filePosition;
+extern int fileWordsExtendedCharset;
 
 /*--------------------------------------------------- Functions */
 
@@ -35,4 +41,3 @@ extern int compareStrings(const std::string &userWord, const std::string &lastWo
 extern std::string getNextWord();
 
 #endif
-

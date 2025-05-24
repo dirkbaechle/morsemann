@@ -6,4 +6,6 @@ mmscreen/*.o
 mmscreen/*.a
 mmword/*.o
 mmword/*.a
+inih/*.o
+inih/*.a
 morsemann
