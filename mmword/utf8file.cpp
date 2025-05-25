@@ -395,8 +395,9 @@ string readUtf8Word(int &error)
         }
         else
         {
+          // PM_VOID, PM_SPACE, PM_SPACE_CONT
           utf8LastToken = "";
-          std::size_t found = apostrophChars.find(utf8Token);
+          std::size_t found = punctuationChars.find(utf8Token);
           if (found != string::npos)
           {
             utf8LastToken = utf8Token;
@@ -407,8 +408,6 @@ string readUtf8Word(int &error)
       else
       {
         utf8LastToken = "";
-        // Behandeln als Leerzeichen
-        utf8ParseMode = PM_SPACE;
         if ((utf8ParseMode == PM_WORD) ||
             (utf8ParseMode == PM_PUNCT) ||
             (utf8ParseMode == PM_PUNCT_CONT) ||
@@ -416,9 +415,12 @@ string readUtf8Word(int &error)
             (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
         {
           // Aktuelles Wort beendet
+          utf8ParseMode = PM_SPACE;
           error = MM_UTF8_WORD;
           return word;
         }
+        // Behandeln als Leerzeichen
+        utf8ParseMode = PM_SPACE;
       }
     }
   }
