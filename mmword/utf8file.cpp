@@ -15,7 +15,17 @@ using std::cout;
 #define PM_VOID 0
 #define PM_WORD 1
 #define PM_SPACE 2
-#define PM_PUNCT 3
+#define PM_SPACE_CONT 3
+#define PM_PUNCT 4
+#define PM_PUNCT_CONT 5
+#define PM_PUNCT_BEHIND 6
+#define PM_PUNCT_BEHIND_CONT 7
+
+#define TT_NONE 0
+#define TT_CHAR 1
+#define TT_SPACE 2
+#define TT_PUNCT 3
+#define TT_PUNCTEXT 4
 
 /*-------------------------------------------------------- Typedefs */
 
@@ -27,11 +37,15 @@ using std::cout;
 std::ifstream file;
 // Der aktuelle Parsing-Modus innerhalb der Datei
 int utf8ParseMode = PM_VOID;
-// Das letzte gelesene UTF8 Zeichen.
-unsigned char utf8LastChar = 0;
-int utf8LastCharValid = MM_FALSE;
+// Das letzte gelesene UTF8 Token.
+string utf8LastToken = "";
 // Liste der erlaubten Sonderzeichen im ASCII-Bereich (1 Byte)
 string punctuationChars = ",.?/=!\"$'()+-:;@`";
+// Liste der erlaubten Zeichen die zwischen (Halb)Sätzen stehen und
+// daher eine Klammerung durch Apostrophe fortsetzen dürfen (1 Byte)
+string separatorChars = ",.?!:;";
+// Liste der Apostroph Zeichen
+string apostrophChars = "\"'`";
 
 /*--------------------------------------------------- Functions */
 
@@ -99,13 +113,14 @@ string readUtf8Char(int &error)
     unsigned char firstByte;
     file.read(reinterpret_cast<char*>(&firstByte), 1);
 
-    if (file.eof()) break;
-
     int charLen = utf8CharLength(firstByte);
     if (charLen == -1) {
       error = MM_UTF8_INVALID_STARTBYTE;
       return "";
     }
+
+    if ((charLen > 1) && (file.eof()))
+      break;
 
     std::string utf8Char(1, firstByte);
     for (int i = 1; i < charLen; ++i) {
@@ -126,6 +141,137 @@ string readUtf8Char(int &error)
   return "";
 }
 
+/** Liest ein UTF8 Byte aus der bereits geöffneten
+ * UTF8 Datei, konvertiert Umlaute und klassifiziert
+ * den Token-Typ.
+ */
+string getUtf8Token(int &type, int &error)
+{
+  if (file.eof())
+  {
+    type = TT_NONE;
+    error = MM_UTF8_EOF;
+    return "";
+  }
+
+  string word;
+  int charError;
+  string utf8Char = readUtf8Char(charError);
+  if (charError == MM_UTF8_CHAR)
+  {
+    if (utf8Char.size() == 1)
+    {
+      // classify character
+      unsigned char c = utf8Char[0];
+
+      if (isspace(c))
+      {
+        // Whitespace
+        word += c;
+        type = TT_SPACE;
+      }
+      else if (isalnum(c))
+      {
+        // Buchstabe/Zahl
+        if ((c >= 65) && (c <= 90))
+        {
+          // Groß- -> Kleinbuchstabe
+          c += 32;
+        }
+        word += c;
+        type = TT_CHAR;
+      }
+      else
+      {
+        // Anderes Zeichen
+        std::size_t found = punctuationChars.find(c);
+        if (found != string::npos)
+        {
+          if (fileWordsExtendedCharset == MM_FALSE)
+          {
+            // DTP-Modus, nur hinzufügen wenn eines
+            // der ersten 5 Punktuationszeichen...
+            if (found < 5)
+            {
+              word += c;
+              type = TT_PUNCT;
+            }
+            else
+            {
+              type = TT_NONE;
+            }
+          }
+          else
+          {
+            word += c;
+            if (found < 5)
+            {
+              type = TT_PUNCT;
+            }
+            else
+            {
+              type = TT_PUNCTEXT;
+            }
+          }
+        }
+        else
+        {
+          type = TT_NONE;
+        }
+      }
+    }
+    else
+    {
+      // MultiChar UTF8: Generell behandeln als unbekannt
+      type = TT_NONE;
+
+      // Prüfen auf Umlaute
+      if ((utf8Char.size() == 2) &&
+          (((unsigned char) utf8Char[0]) == 195))
+      {
+        unsigned int secondByte = (unsigned char) utf8Char[1];
+
+        switch (secondByte)
+        {
+          case 164: // ä
+          case 132:
+              word += "ae";
+              type = TT_CHAR;
+              break;
+          case 182: // ö
+          case 150:
+              word += "oe";
+              type = TT_CHAR;
+              break;
+          case 188: // ü
+          case 156:
+              word += "ue";
+              type = TT_CHAR;
+              break;
+          case 159: // ß
+              word += "ss";
+              type = TT_CHAR;
+              break;
+        }
+      }
+    }
+    error = MM_UTF8_WORD;
+  }
+  else if (charError == MM_UTF8_EOF)
+  {
+    error = MM_UTF8_EOF;
+    type = TT_NONE;
+  }
+  else
+  {
+    // Start or continuation byte error
+    error = MM_UTF8_WORD;
+    type = TT_NONE;
+  }
+
+  return word;
+}
+
 /** Liest ein ganzes Wort aus der bereits geöffneten
  * UTF8 Datei.
  */
@@ -138,120 +284,146 @@ string readUtf8Word(int &error)
   }
 
   string word;
-  string utf8Char;
-  int charError;
-  while (!file.eof()) {
-    utf8Char = readUtf8Char(charError);
-    if (charError == MM_UTF8_CHAR)
+  string utf8Token;
+  int tokenType;
+  int tokenError;
+  while (!file.eof()) 
+  {
+    utf8Token = getUtf8Token(tokenType, tokenError);
+    if (tokenError == MM_UTF8_WORD)
     {
-      if (utf8Char.size() == 1)
+      if (tokenType == TT_SPACE)
       {
-        // classify character
-        unsigned char c = utf8Char[0];
-
-        if (isspace(c))
+        // Whitespace
+        if ((utf8ParseMode == PM_WORD) ||
+            (utf8ParseMode == PM_PUNCT) ||
+            (utf8ParseMode == PM_PUNCT_CONT) ||
+            (utf8ParseMode == PM_PUNCT_BEHIND) ||
+            (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
         {
-          // Whitespace
-          if (utf8ParseMode == PM_WORD)
-          {
-            error = MM_UTF8_WORD;
-            return word;
-          }
+          error = MM_UTF8_WORD;
           utf8ParseMode = PM_SPACE;
-        }
-        else if (isalnum(c))
+          if ((utf8ParseMode == PM_PUNCT_BEHIND) ||
+              (utf8ParseMode == PM_WORD))
+          {
+            word += utf8LastToken;
+            utf8LastToken = "";
+          }
+          return word;
+        } else if ((utf8ParseMode == PM_SPACE) ||
+                   (utf8ParseMode == PM_SPACE_CONT))
         {
-          // Buchstabe/Zahl
-          if ((c >= 65) && (c <= 90))
-          {
-            // Groß- -> Kleinbuchstabe
-            c += 32;
-          }
-
-          if ((utf8ParseMode == PM_PUNCT) &&
-              (utf8LastCharValid == MM_TRUE))
-          {
-            word += utf8LastChar;
-          }
-          utf8ParseMode = PM_WORD;
-          word += c;
+          utf8ParseMode = PM_SPACE_CONT;
         }
         else
         {
-          // Anderes Zeichen
-          std::size_t found = punctuationChars.find(c);
+          // PM_VOID
+          utf8ParseMode = PM_SPACE;
+        }
+        utf8LastToken = "";
+      }
+      else if (tokenType == TT_CHAR)
+      {
+        if ((utf8ParseMode == PM_PUNCT) ||
+            (utf8ParseMode == PM_PUNCT_CONT) ||
+            (utf8ParseMode == PM_WORD))
+        {
+          // Ggf. führendes Apostroph einfügen
+          word += utf8LastToken;
+        }
+        else if ((utf8ParseMode == PM_PUNCT_BEHIND) ||
+                 (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
+        {
+          utf8LastToken = utf8Token;
+          error = MM_UTF8_WORD;
+          utf8ParseMode = PM_WORD;
+          return word;
+        }
+        utf8ParseMode = PM_WORD;
+        word += utf8Token;
+        utf8LastToken = "";
+      }
+      else if ((tokenType == TT_PUNCT) ||
+            (tokenType == TT_PUNCTEXT))
+      {
+        if (utf8ParseMode == PM_WORD)
+        {
+          word += utf8Token;
+          utf8ParseMode = PM_PUNCT_BEHIND;
+          utf8LastToken = "";
+        }
+        else if (utf8ParseMode == PM_PUNCT)
+        {
+          utf8LastToken = "";
+          std::size_t found = apostrophChars.find(utf8Token);
           if (found != string::npos)
           {
-            if (fileWordsExtendedCharset == MM_FALSE)
-            {
-              // DTP-Modus, nur hinzufügen wenn eines
-              // der ersten 5 Punktuationszeichen...
-              if (found < 5)
-              {
-                word += c;
-              }
-              else
-              {
-                if (utf8ParseMode == PM_WORD)
-                {
-                  utf8ParseMode = PM_PUNCT;
-                  error = MM_UTF8_WORD;
-                  return word;
-                }
-              }
-            }
-            else
-            {
-              word += c;
-            }
-            utf8ParseMode = PM_PUNCT;
+            utf8LastToken = utf8Token;
+          }
+          utf8ParseMode = PM_PUNCT_CONT;
+        }
+        else if (utf8ParseMode == PM_PUNCT_CONT)
+        {
+          utf8LastToken = "";
+          std::size_t found = apostrophChars.find(utf8Token);
+          if (found != string::npos)
+          {
+            utf8LastToken = utf8Token;
           }
         }
-        utf8LastChar = c;
-        utf8LastCharValid = MM_TRUE;
+        else if (utf8ParseMode == PM_PUNCT_BEHIND)
+        {
+          std::size_t found = separatorChars.find(utf8Token);
+          if (found != string::npos)
+          {
+            word += utf8Token;
+            utf8ParseMode = PM_SPACE;
+            return word;
+          }
+
+          utf8ParseMode = PM_PUNCT_BEHIND_CONT;
+        }
+        else if (utf8ParseMode == PM_PUNCT_BEHIND_CONT)
+        {
+          std::size_t found = separatorChars.find(utf8Token);
+          if (found != string::npos)
+          {
+            word += utf8Token;
+            utf8ParseMode = PM_SPACE;
+            return word;
+          }
+        }
+        else
+        {
+          utf8LastToken = "";
+          std::size_t found = apostrophChars.find(utf8Token);
+          if (found != string::npos)
+          {
+            utf8LastToken = utf8Token;
+          }
+          utf8ParseMode = PM_PUNCT;
+        }
       }
       else
       {
-        // Prüfen auf Umlaute
-        if ((utf8Char.size() == 2) &&
-            (((unsigned char) utf8Char[0]) == 195))
+        utf8LastToken = "";
+        // Behandeln als Leerzeichen
+        utf8ParseMode = PM_SPACE;
+        if ((utf8ParseMode == PM_WORD) ||
+            (utf8ParseMode == PM_PUNCT) ||
+            (utf8ParseMode == PM_PUNCT_CONT) ||
+            (utf8ParseMode == PM_PUNCT_BEHIND) ||
+            (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
         {
-          unsigned int secondByte = (unsigned char) utf8Char[1];
-
-          switch (secondByte)
-          {
-            case 164: // ä
-            case 132:
-                word += "ae";
-                utf8ParseMode = PM_WORD;
-                break;
-            case 182: // ö
-            case 150:
-                word += "oe";
-                utf8ParseMode = PM_WORD;
-                break;
-            case 188: // ü
-            case 156:
-                word += "ue";
-                utf8ParseMode = PM_WORD;
-                break;
-            case 159: // ß
-                word += "ss";
-                utf8ParseMode = PM_WORD;
-                break;
-          }
+          // Aktuelles Wort beendet
+          error = MM_UTF8_WORD;
+          return word;
         }
-        else
-        {
-          // Behandeln als Leerzeichen
-          utf8ParseMode = PM_SPACE;
-        }
-        utf8LastCharValid = MM_FALSE;
       }
     }
   }
 
-  if (word.size() > 0)
+  if (!word.empty())
   {
     error = MM_UTF8_WORD;
   }
