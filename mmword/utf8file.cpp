@@ -446,16 +446,24 @@ void parseUtf8FileToStdout(const string &filePath)
     return;
 
   int error = 0;
-  string word = readUtf8Word(error);
-  if (error != MM_UTF8_WORD)
-    return;
-  
+  string word;
+  // Erstes Wort lesen
+  while (1)
+  {
+    word = readUtf8Word(error);
+    if (!word.empty())
+      break;
+    // Datei am Ende?
+    if (error != MM_UTF8_WORD)
+      return;
+  }
   cout << word;
   cout.flush();
   while (error != MM_UTF8_EOF)
   {
     word = readUtf8Word(error);
-    if (error == MM_UTF8_WORD)
+    if ((error == MM_UTF8_WORD) &&
+        (!word.empty()))
     {
       cout << " " << word;
       cout.flush();
