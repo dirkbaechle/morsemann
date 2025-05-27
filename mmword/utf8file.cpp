@@ -9,6 +9,7 @@
 
 using std::string;
 using std::cout;
+using std::endl;
 
 /*--------------------------------------------------------- Defines */
 
@@ -44,8 +45,10 @@ string punctuationChars = ",.?/=!\"$'()+-:;@`";
 // Liste der erlaubten Zeichen die zwischen (Halb)Sätzen stehen und
 // daher eine Klammerung durch Apostrophe fortsetzen dürfen (1 Byte)
 string separatorChars = ",.?!:;";
-// Liste der Apostroph Zeichen
-string apostrophChars = "\"'`";
+// Liste der führenden Zeichen (Apostrophe und Sonderzeichen)
+string leadingChars = "\"'`/(+-@";
+// Ziellänge für eine Zeile in der Standardausgabe einer Datei
+int stdoutLineLength = 80;
 
 /*--------------------------------------------------- Functions */
 
@@ -349,13 +352,31 @@ string readUtf8Word(int &error)
         if (utf8ParseMode == PM_WORD)
         {
           word += utf8Token;
+          std::size_t found = separatorChars.find(utf8Token);
+          if (found != string::npos)
+          {
+            error = MM_UTF8_WORD;
+            utf8ParseMode = PM_SPACE;
+            return word;
+          }
+
           utf8ParseMode = PM_PUNCT_BEHIND;
           utf8LastToken = "";
+        }
+        else if (utf8ParseMode == PM_SPACE)
+        {
+          utf8LastToken = "";
+          std::size_t found = leadingChars.find(utf8Token);
+          if (found != string::npos)
+          {
+            utf8LastToken = utf8Token;
+          }
+          utf8ParseMode = PM_PUNCT;
         }
         else if (utf8ParseMode == PM_PUNCT)
         {
           utf8LastToken = "";
-          std::size_t found = apostrophChars.find(utf8Token);
+          std::size_t found = leadingChars.find(utf8Token);
           if (found != string::npos)
           {
             utf8LastToken = utf8Token;
@@ -365,7 +386,7 @@ string readUtf8Word(int &error)
         else if (utf8ParseMode == PM_PUNCT_CONT)
         {
           utf8LastToken = "";
-          std::size_t found = apostrophChars.find(utf8Token);
+          std::size_t found = leadingChars.find(utf8Token);
           if (found != string::npos)
           {
             utf8LastToken = utf8Token;
@@ -446,6 +467,7 @@ void parseUtf8FileToStdout(const string &filePath)
     return;
 
   int error = 0;
+  int lineLength = 0;
   string word;
   // Erstes Wort lesen
   while (1)
@@ -459,15 +481,25 @@ void parseUtf8FileToStdout(const string &filePath)
   }
   cout << word;
   cout.flush();
+  lineLength += word.size();
   while (error != MM_UTF8_EOF)
   {
     word = readUtf8Word(error);
     if ((error == MM_UTF8_WORD) &&
         (!word.empty()))
     {
-      cout << " " << word;
+      if (lineLength < stdoutLineLength)
+      {
+        cout << " " << word;
+        lineLength += 1 + word.size();
+      }
+      else
+      {
+        cout << "\n" << word;
+        lineLength = word.size();
+      }
       cout.flush();
     }
   }
-  cout << std::endl;
+  cout << endl;
 }
