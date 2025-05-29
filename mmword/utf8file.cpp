@@ -144,6 +144,87 @@ string readUtf8Char(int &error)
   return "";
 }
 
+/** Filtert entsprechend der aktuell gewählten Zeichenmenge
+ * die ungewünschten Zeichen heraus und liefert das neue
+ * Wort/Token zurück.
+ */
+string getFilteredUtf8Chars(string token, int type)
+{
+  string filteredWord;
+  string::const_iterator t_it = token.cbegin();
+  for (; t_it != token.cend(); ++t_it)
+  {
+    if (type == TT_CHAR)
+    {
+      if (selectedCharGroup == 8)
+      {
+        // Nur eingegebene Zeichen akzeptieren
+        std::size_t cpos = charSet.find(*t_it);
+        if (cpos != string::npos)
+        {
+          filteredWord += *t_it;
+        }
+      }
+      else
+      {
+        // Buchstabe oder Zahl?
+        int isNumber = ((*t_it >= 48) && (*t_it <= 57)) ? MM_TRUE : MM_FALSE;
+        if (isNumber == MM_TRUE)
+        {
+          // Zahl
+          if ((selectedCharGroup == 1) || 
+              (selectedCharGroup == 3) ||
+              (selectedCharGroup == 5) ||
+              (selectedCharGroup == 7))
+          {
+            filteredWord += *t_it;
+          }
+        }
+        else
+        {
+          // Buchstabe
+          if ((selectedCharGroup == 1) || 
+              (selectedCharGroup == 2) ||
+              (selectedCharGroup == 5) ||
+              (selectedCharGroup == 6))
+          {
+            filteredWord += *t_it;
+          }
+        }
+      }
+    }
+    else if ((type == TT_PUNCT) ||
+             (type == TT_PUNCTEXT))
+    {
+      if (selectedCharGroup == 8)
+      {
+        // Nur eingegebene Zeichen akzeptieren
+        std::size_t cpos = charSet.find(*t_it);
+        if (cpos != string::npos)
+        {
+          filteredWord += *t_it;
+        }
+      }
+      else
+      {
+        if ((selectedCharGroup == 1) || 
+            (selectedCharGroup == 4) ||
+            (selectedCharGroup == 6) ||
+            (selectedCharGroup == 7))
+        {
+          filteredWord += *t_it;
+        }
+      }
+    }
+    else
+    {
+      filteredWord += *t_it;
+    }
+  }
+
+  return filteredWord;
+}
+
 /** Liest ein UTF8 Byte aus der bereits geöffneten
  * UTF8 Datei, konvertiert Umlaute und klassifiziert
  * den Token-Typ.
@@ -258,6 +339,18 @@ string getUtf8Token(int &type, int &error)
         }
       }
     }
+
+    if ((word.size() > 0) &&
+        (type != TT_SPACE))
+    {
+      word = getFilteredUtf8Chars(word, type);
+      // TODO check if we want to have this
+      if (word.size() == 0)
+      {
+        type = TT_NONE;
+      }
+    }
+
     error = MM_UTF8_WORD;
   }
   else if (charError == MM_UTF8_EOF)
