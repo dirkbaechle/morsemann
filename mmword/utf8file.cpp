@@ -430,10 +430,16 @@ string readUtf8Word(int &error)
         else if ((utf8ParseMode == PM_PUNCT_BEHIND) ||
                  (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
         {
+          // Spezialfall: I've
+          if ((utf8ParseMode != PM_PUNCT_BEHIND) ||
+              (utf8LastToken != "'"))
+        {
           utf8LastToken = utf8Token;
           error = MM_UTF8_WORD;
+
           utf8ParseMode = PM_WORD;
           return word;
+          }
         }
         utf8ParseMode = PM_WORD;
         word += utf8Token;
@@ -454,7 +460,7 @@ string readUtf8Word(int &error)
           }
 
           utf8ParseMode = PM_PUNCT_BEHIND;
-          utf8LastToken = "";
+          utf8LastToken = utf8Token;
         }
         else if (utf8ParseMode == PM_SPACE)
         {
