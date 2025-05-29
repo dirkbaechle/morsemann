@@ -47,6 +47,10 @@ string punctuationChars = ",.?/=!\"$'()+-:;@`";
 string separatorChars = ",.?!:;";
 // Liste der führenden Zeichen (Apostrophe und Sonderzeichen)
 string leadingChars = "\"'`/(+-@";
+// Liste der abschließenden Zeichen (vor einem End-Apostroph)
+string trailingChars = ".!?";
+// Liste der Apostroph Zeichen
+string apostropheChars = "\"'`";
 // Ziellänge für eine Zeile in der Standardausgabe einer Datei
 int stdoutLineLength = 80;
 
@@ -451,12 +455,16 @@ string readUtf8Word(int &error)
         if (utf8ParseMode == PM_WORD)
         {
           word += utf8Token;
-          std::size_t found = separatorChars.find(utf8Token);
+          std::size_t found = trailingChars.find(utf8Token);
+          if (found == string::npos)
+          {
+            found = separatorChars.find(utf8Token);
           if (found != string::npos)
           {
             error = MM_UTF8_WORD;
             utf8ParseMode = PM_SPACE;
             return word;
+            }
           }
 
           utf8ParseMode = PM_PUNCT_BEHIND;
@@ -501,6 +509,18 @@ string readUtf8Word(int &error)
             return word;
           }
 
+          found = apostropheChars.find(utf8Token);
+          if (found != string::npos)
+          {
+            cout.flush();
+            found = trailingChars.find(utf8LastToken);
+            if (found != string::npos)
+            {
+              // Schließendes Apostroph hinzufügen
+              word += utf8Token;
+            }
+          }
+          utf8LastToken = "";
           utf8ParseMode = PM_PUNCT_BEHIND_CONT;
         }
         else if (utf8ParseMode == PM_PUNCT_BEHIND_CONT)
