@@ -401,14 +401,16 @@ string readUtf8Word(int &error)
             (utf8ParseMode == PM_PUNCT_BEHIND) ||
             (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
         {
-          error = MM_UTF8_WORD;
-          utf8ParseMode = PM_SPACE;
           if ((utf8ParseMode == PM_PUNCT_BEHIND) ||
-              (utf8ParseMode == PM_WORD))
+              (utf8ParseMode == PM_WORD) ||
+              (utf8ParseMode == PM_PUNCT) ||
+              (utf8ParseMode == PM_PUNCT_CONT))
           {
             word += utf8LastToken;
             utf8LastToken = "";
           }
+          utf8ParseMode = PM_SPACE;
+          error = MM_UTF8_WORD;
           return word;
         } else if ((utf8ParseMode == PM_SPACE) ||
                    (utf8ParseMode == PM_SPACE_CONT))
@@ -437,12 +439,12 @@ string readUtf8Word(int &error)
           // Spezialfall: I've
           if ((utf8ParseMode != PM_PUNCT_BEHIND) ||
               (utf8LastToken != "'"))
-        {
-          utf8LastToken = utf8Token;
-          error = MM_UTF8_WORD;
+          {
+            utf8LastToken = utf8Token;
+            error = MM_UTF8_WORD;
 
-          utf8ParseMode = PM_WORD;
-          return word;
+            utf8ParseMode = PM_WORD;
+            return word;
           }
         }
         utf8ParseMode = PM_WORD;
@@ -459,29 +461,23 @@ string readUtf8Word(int &error)
           if (found == string::npos)
           {
             found = separatorChars.find(utf8Token);
-          if (found != string::npos)
-          {
-            error = MM_UTF8_WORD;
-            utf8ParseMode = PM_SPACE;
-            return word;
+            if (found != string::npos)
+            {
+              error = MM_UTF8_WORD;
+              utf8ParseMode = PM_SPACE;
+              return word;
             }
           }
 
           utf8ParseMode = PM_PUNCT_BEHIND;
           utf8LastToken = utf8Token;
         }
-        else if (utf8ParseMode == PM_SPACE)
-        {
-          utf8LastToken = "";
-          std::size_t found = leadingChars.find(utf8Token);
-          if (found != string::npos)
-          {
-            utf8LastToken = utf8Token;
-          }
-          utf8ParseMode = PM_PUNCT;
-        }
         else if (utf8ParseMode == PM_PUNCT)
         {
+          if (selectedCharGroup == 4)
+          {
+            word += utf8LastToken;
+          }
           utf8LastToken = "";
           std::size_t found = leadingChars.find(utf8Token);
           if (found != string::npos)
@@ -492,6 +488,11 @@ string readUtf8Word(int &error)
         }
         else if (utf8ParseMode == PM_PUNCT_CONT)
         {
+          if (selectedCharGroup == 4)
+          {
+            word += utf8LastToken;
+          }
+
           utf8LastToken = "";
           std::size_t found = leadingChars.find(utf8Token);
           if (found != string::npos)
@@ -537,7 +538,7 @@ string readUtf8Word(int &error)
         {
           // PM_VOID, PM_SPACE, PM_SPACE_CONT
           utf8LastToken = "";
-          std::size_t found = punctuationChars.find(utf8Token);
+          std::size_t found = leadingChars.find(utf8Token);
           if (found != string::npos)
           {
             utf8LastToken = utf8Token;
@@ -547,6 +548,11 @@ string readUtf8Word(int &error)
       }
       else
       {
+        if (selectedCharGroup == 4)
+        {
+          word += utf8LastToken;
+        }
+
         utf8LastToken = "";
         if ((utf8ParseMode == PM_WORD) ||
             (utf8ParseMode == PM_PUNCT) ||
