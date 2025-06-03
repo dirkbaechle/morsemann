@@ -56,6 +56,15 @@ int stdoutLineLength = 80;
 
 /*--------------------------------------------------- Functions */
 
+/** Setzt alle Variablen zurück, die während des Parsens
+ * von Utf8-Dateien oder -Streams benutzt werden.
+ */
+void resetUtf8Parser()
+{
+  utf8ParseMode = PM_VOID;
+  utf8LastToken = "";
+}
+
 /** Liefert 'true' (1 == MM_TRUE) wenn die UTF8 Datei nicht
  * leer ist, also ausgebbare Worte enthält,
  * sonst 'false' (0 == MM_FALSE).
@@ -114,11 +123,12 @@ int utf8CharLength(unsigned char firstByte) {
 /** Liest ein einzelnes UTF8 Zeichen aus der bereits
  * geöffneten Datei.
  */
-string readUtf8Char(int &error)
+string readUtf8Char(std::istream &stream,
+                    int &error)
 {
-  while (!file.eof()) {
+  while (!stream.eof()) {
     unsigned char firstByte;
-    file.read(reinterpret_cast<char*>(&firstByte), 1);
+    stream.read(reinterpret_cast<char*>(&firstByte), 1);
 
     int charLen = utf8CharLength(firstByte);
     if (charLen == -1) {
@@ -126,14 +136,14 @@ string readUtf8Char(int &error)
       return "";
     }
 
-    if ((charLen > 1) && (file.eof()))
+    if ((charLen > 1) && (stream.eof()))
       break;
 
     std::string utf8Char(1, firstByte);
     for (int i = 1; i < charLen; ++i) {
       unsigned char nextByte;
-      file.read(reinterpret_cast<char*>(&nextByte), 1);
-      if (file.eof() || (nextByte & 0xC0) != 0x80) {
+      stream.read(reinterpret_cast<char*>(&nextByte), 1);
+      if (stream.eof() || (nextByte & 0xC0) != 0x80) {
         error = MM_UTF8_INVALID_CONTBYTE;
         return "";
       }
@@ -233,9 +243,11 @@ string getFilteredUtf8Chars(string token, int type)
  * UTF8 Datei, konvertiert Umlaute und klassifiziert
  * den Token-Typ.
  */
-string getUtf8Token(int &type, int &error)
+string getUtf8Token(std::istream &stream,
+                    int &type,
+                    int &error)
 {
-  if (file.eof())
+  if (stream.eof())
   {
     type = TT_NONE;
     error = MM_UTF8_EOF;
@@ -244,7 +256,7 @@ string getUtf8Token(int &type, int &error)
 
   string word;
   int charError;
-  string utf8Char = readUtf8Char(charError);
+  string utf8Char = readUtf8Char(stream, charError);
   if (charError == MM_UTF8_CHAR)
   {
     if (utf8Char.size() == 1)
@@ -375,9 +387,10 @@ string getUtf8Token(int &type, int &error)
 /** Liest ein ganzes Wort aus der bereits geöffneten
  * UTF8 Datei.
  */
-string readUtf8Word(int &error)
+string readUtf8Word(std::istream &stream,
+                    int &error)
 {
-  if (file.eof())
+  if (stream.eof())
   {
     error = MM_UTF8_EOF;
     return "";
@@ -387,9 +400,9 @@ string readUtf8Word(int &error)
   string utf8Token;
   int tokenType;
   int tokenError;
-  while (!file.eof()) 
+  while (!stream.eof()) 
   {
-    utf8Token = getUtf8Token(tokenType, tokenError);
+    utf8Token = getUtf8Token(stream, tokenType, tokenError);
     if (tokenError == MM_UTF8_WORD)
     {
       if (tokenType == TT_SPACE)
@@ -582,6 +595,50 @@ string readUtf8Word(int &error)
   return word;
 }
 
+/** Gibt den Input (Utf8-Datei) mit ihren erkannten/geparsten Worten
+ * auf den Output-Stream aus.
+ */
+void parseUtf8FileToStream(std::istream &stream,
+                           std::ostream &out)
+{
+  int error = 0;
+  int lineLength = 0;
+  string word;
+  // Erstes Wort lesen
+  while (1)
+  {
+    word = readUtf8Word(stream, error);
+    if (!word.empty())
+      break;
+    // Datei am Ende?
+    if (error != MM_UTF8_WORD)
+      return;
+  }
+  out << word;
+  out.flush();
+  lineLength += word.size();
+  while (error != MM_UTF8_EOF)
+  {
+    word = readUtf8Word(stream, error);
+    if ((error == MM_UTF8_WORD) &&
+        (!word.empty()))
+    {
+      if (lineLength < stdoutLineLength)
+      {
+        out << " " << word;
+        lineLength += 1 + word.size();
+      }
+      else
+      {
+        out << "\n" << word;
+        lineLength = word.size();
+      }
+      out.flush();
+    }
+  }
+  out << endl;
+}
+
 /** Gibt die Datei mit ihren erkannten/geparsten Worten
  * auf die Standardausgabe aus.
  */
@@ -591,40 +648,5 @@ void parseUtf8FileToStdout(const string &filePath)
   if (openUtf8File() == MM_FALSE)
     return;
 
-  int error = 0;
-  int lineLength = 0;
-  string word;
-  // Erstes Wort lesen
-  while (1)
-  {
-    word = readUtf8Word(error);
-    if (!word.empty())
-      break;
-    // Datei am Ende?
-    if (error != MM_UTF8_WORD)
-      return;
-  }
-  cout << word;
-  cout.flush();
-  lineLength += word.size();
-  while (error != MM_UTF8_EOF)
-  {
-    word = readUtf8Word(error);
-    if ((error == MM_UTF8_WORD) &&
-        (!word.empty()))
-    {
-      if (lineLength < stdoutLineLength)
-      {
-        cout << " " << word;
-        lineLength += 1 + word.size();
-      }
-      else
-      {
-        cout << "\n" << word;
-        lineLength = word.size();
-      }
-      cout.flush();
-    }
-  }
-  cout << endl;
+  parseUtf8FileToStream(file, cout);
 }
