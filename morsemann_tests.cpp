@@ -311,6 +311,18 @@ TEST_CASE("SPC13: handling of unknown unicode chars")
     CHECK(output.str() == "`why', s he ask ed.");
 }
 
+TEST_CASE("SPC14: insert closing parenthesis after separating char")
+{
+    resetUtf8Parser();
+    selectedCharGroup = CG_ALL_CHARS;
+    fileWordsExtendedCharset = MM_TRUE;
+
+    std::istringstream input("And then (Why?) it happened.");
+    std::ostringstream output;
+    parseTestWord(input, output);
+    CHECK(output.str() == "and then (why?) it happened.");
+}
+
 TEST_CASE("VERB: testing basic parsing of words")
 {
     resetUtf8Parser();
@@ -578,4 +590,16 @@ TEST_CASE("VERB: SPC13: handling of unknown unicode chars")
     std::ostringstream output;
     parseTestWordVerbatim(input, output);
     CHECK(output.str() == "`why', s he ask ed.");
+}
+
+TEST_CASE("VERB: SPC14: insert closing parenthesis after separating char")
+{
+    resetUtf8Parser();
+    selectedCharGroup = CG_ALL_CHARS;
+    fileWordsExtendedCharset = MM_TRUE;
+
+    std::istringstream input("And then (Why?) it happened.");
+    std::ostringstream output;
+    parseTestWordVerbatim(input, output);
+    CHECK(output.str() == "and then (why?) it happened.");
 }

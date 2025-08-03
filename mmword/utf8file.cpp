@@ -54,6 +54,8 @@ string leadingChars = "\"'`/(+-@";
 string trailingChars = ".!?";
 // Liste der Apostroph Zeichen
 string apostropheChars = "\"'`";
+// Liste der Klammer Zeichen
+string closingParenthesesChars = ")";
 // Ziellänge für eine Zeile in der Standardausgabe einer Datei
 int stdoutLineLength = 80;
 
@@ -189,6 +191,15 @@ void closeUtf8File()
 {
   utf8ParseMode = PM_VOID;
   file.close();
+}
+
+/** Hilfsfunktion die 'true' liefert falls das gegebene Token
+ * in der Zeichenmenge 'charset' vorkommt.
+ */
+bool isInCharSet(string charset, string token)
+{
+  std::size_t found = charset.find(token);
+  return (found != string::npos);
 }
 
 /** Hilfsfunktion zum Bestimmen der Anzahl Bytes in einem
@@ -560,11 +571,9 @@ string readUtf8Word(std::istream &stream,
         if (utf8ParseMode == PM_WORD)
         {
           word += utf8Token;
-          std::size_t found = trailingChars.find(utf8Token);
-          if (found == string::npos)
+          if (!isInCharSet(trailingChars, utf8Token))
           {
-            found = separatorChars.find(utf8Token);
-            if (found != string::npos)
+            if (isInCharSet(separatorChars, utf8Token))
             {
               // SPC4: punctation that is not trailing but separating ends the word
               error = MM_UTF8_WORD;
@@ -594,8 +603,7 @@ string readUtf8Word(std::istream &stream,
           }
           else
           {
-            std::size_t found = leadingChars.find(utf8Token);
-            if (found != string::npos)
+            if (isInCharSet(leadingChars, utf8Token))
             {
               // SPC6: allow and reduce leading punctuation chars
               utf8LastToken = utf8Token;
@@ -613,8 +621,7 @@ string readUtf8Word(std::istream &stream,
           }
           else
           {
-            std::size_t found = leadingChars.find(utf8Token);
-            if (found != string::npos)
+            if (isInCharSet(leadingChars, utf8Token))
             {
               // SPC7: reduce leading punctuation chars
               utf8LastToken = utf8Token;
@@ -623,8 +630,7 @@ string readUtf8Word(std::istream &stream,
         }
         else if (utf8ParseMode == PM_PUNCT_BEHIND)
         {
-          std::size_t found = separatorChars.find(utf8Token);
-          if (found != string::npos)
+          if (isInCharSet(separatorChars, utf8Token))
           {
             // SPC8: trailing separator chars end the word
             word += utf8Token;
@@ -632,14 +638,23 @@ string readUtf8Word(std::istream &stream,
             return word;
           }
 
-          found = apostropheChars.find(utf8Token);
-          if (found != string::npos)
+          if (isInCharSet(closingParenthesesChars, utf8Token))
           {
-            found = trailingChars.find(utf8LastToken);
-            if (found != string::npos)
+            if (isInCharSet(separatorChars, utf8LastToken))
             {
-              // SPC9: insert first apostrophe char that is trailing
+              // SPC14: insert closing parenthesis after separating char
               word += utf8Token;
+            }
+          }
+          else
+          {
+            if (isInCharSet(apostropheChars, utf8Token))
+            {
+              if (isInCharSet(trailingChars, utf8LastToken))
+              {
+                // SPC9: insert first apostrophe char that is trailing
+                word += utf8Token;
+              }
             }
           }
           utf8LastToken = "";
@@ -647,8 +662,7 @@ string readUtf8Word(std::istream &stream,
         }
         else if (utf8ParseMode == PM_PUNCT_BEHIND_CONT)
         {
-          std::size_t found = separatorChars.find(utf8Token);
-          if (found != string::npos)
+          if (isInCharSet(separatorChars, utf8Token))
           {
             // SPC10: a separator char behind trailing punctuation is allowed and ends the word
             word += utf8Token;
@@ -667,8 +681,7 @@ string readUtf8Word(std::istream &stream,
           }
           else
           {
-            std::size_t found = leadingChars.find(utf8Token);
-            if (found != string::npos)
+            if (isInCharSet(leadingChars, utf8Token))
             {
               // SPC11: leading punctuation char can start a new word
               utf8LastToken = utf8Token;
