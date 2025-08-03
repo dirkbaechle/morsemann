@@ -28,6 +28,9 @@ using std::endl;
 #define TT_PUNCT 3
 #define TT_PUNCTEXT 4
 
+// Für das Debugging der Haupt-Parsingroutine
+//#define DEBUG_PARSER 1
+
 /*-------------------------------------------------------- Typedefs */
 
 /*---------------------------------------------------- Const values */
@@ -55,6 +58,85 @@ string apostropheChars = "\"'`";
 int stdoutLineLength = 80;
 
 /*--------------------------------------------------- Functions */
+
+#ifdef DEBUG_PARSER
+
+/** Gibt den Namen des TokenTyps als String zurück. */
+string tokenTypeString(int tokenType)
+{
+  string s = "";
+  switch (tokenType)
+  {
+    case 0: s = "NONE";
+      break;
+    case 1: s = "CHAR";
+      break;
+    case 2: s = "SPACE";
+      break;
+    case 3: s = "PUNCT";
+      break;
+    case 4: s = "PUNCTEXT";
+      break;
+    default: s = "UNKNOWN";
+      break;
+  }
+
+  return s;
+}
+
+/** Gibt den Namen des TokenErrors als String zurück. */
+string tokenErrorString(int tokenError)
+{
+  string s = "";
+  switch (tokenError)
+  {
+    case 0: s = "CHAR";
+      break;
+    case 1: s = "INVALID_STARTBYTE";
+      break;
+    case 2: s = "INVALID_CONTBYTE";
+      break;
+    case 3: s = "EOF";
+      break;
+    case 4: s = "WORD";
+      break;
+    default: s = "UNKNOWN";
+      break;
+  }
+
+  return s;
+}
+
+/** Gibt den Namen des ParsingModes als String zurück. */
+string parseModeString(int parseMode)
+{
+  string s = "";
+  switch (parseMode)
+  {
+    case 0: s = "VOID";
+      break;
+    case 1: s = "WORD";
+      break;
+    case 2: s = "SPACE";
+      break;
+    case 3: s = "SPACE_CONT";
+      break;
+    case 4: s = "PUNCT";
+      break;
+    case 5: s = "PUNCT_CONT";
+      break;
+    case 6: s = "PUNCT_BEHIND";
+      break;
+    case 7: s = "PUNCT_BEHIND_CONT";
+      break;
+    default: s = "UNKNOWN";
+      break;
+  }
+
+  return s;
+}
+
+#endif // of: #ifdef DEBUG_PARSER
 
 /** Setzt alle Variablen zurück, die während des Parsens
  * von Utf8-Dateien oder -Streams benutzt werden.
@@ -120,8 +202,8 @@ int utf8CharLength(unsigned char firstByte) {
     return -1; // Invalid UTF-8 start byte
 }
 
-/** Liest ein einzelnes UTF8 Zeichen aus der bereits
- * geöffneten Datei.
+/** Liest ein einzelnes UTF8 Zeichen aus dem bereits
+ * geöffneten Stream (Datei).
  */
 string readUtf8Char(std::istream &stream,
                     int &error)
@@ -170,7 +252,7 @@ string getFilteredUtf8Chars(string token, int type)
   {
     if (type == TT_CHAR)
     {
-      if (selectedCharGroup == 8)
+      if (selectedCharGroup == CG_ENTERED_CHAR_SET)
       {
         // Nur eingegebene Zeichen akzeptieren
         std::size_t cpos = charSet.find(*t_it);
@@ -182,14 +264,13 @@ string getFilteredUtf8Chars(string token, int type)
       else
       {
         // Buchstabe oder Zahl?
-        int isNumber = ((*t_it >= 48) && (*t_it <= 57)) ? MM_TRUE : MM_FALSE;
-        if (isNumber == MM_TRUE)
+        if (isdigit(*t_it))
         {
           // Zahl
-          if ((selectedCharGroup == 1) || 
-              (selectedCharGroup == 3) ||
-              (selectedCharGroup == 5) ||
-              (selectedCharGroup == 7))
+          if ((selectedCharGroup == CG_ALL_CHARS) ||
+              (selectedCharGroup == CG_DIGITS_ONLY) ||
+              (selectedCharGroup == CG_LETTERS_AND_DIGITS) ||
+              (selectedCharGroup == CG_DIGITS_AND_PUNCT))
           {
             filteredWord += *t_it;
           }
@@ -197,10 +278,10 @@ string getFilteredUtf8Chars(string token, int type)
         else
         {
           // Buchstabe
-          if ((selectedCharGroup == 1) || 
-              (selectedCharGroup == 2) ||
-              (selectedCharGroup == 5) ||
-              (selectedCharGroup == 6))
+          if ((selectedCharGroup == CG_ALL_CHARS) || 
+              (selectedCharGroup == CG_LETTERS_ONLY) ||
+              (selectedCharGroup == CG_LETTERS_AND_DIGITS) ||
+              (selectedCharGroup == CG_LETTERS_AND_PUNCT))
           {
             filteredWord += *t_it;
           }
@@ -210,7 +291,7 @@ string getFilteredUtf8Chars(string token, int type)
     else if ((type == TT_PUNCT) ||
              (type == TT_PUNCTEXT))
     {
-      if (selectedCharGroup == 8)
+      if (selectedCharGroup == CG_ENTERED_CHAR_SET)
       {
         // Nur eingegebene Zeichen akzeptieren
         std::size_t cpos = charSet.find(*t_it);
@@ -221,10 +302,10 @@ string getFilteredUtf8Chars(string token, int type)
       }
       else
       {
-        if ((selectedCharGroup == 1) || 
-            (selectedCharGroup == 4) ||
-            (selectedCharGroup == 6) ||
-            (selectedCharGroup == 7))
+        if ((selectedCharGroup == CG_ALL_CHARS) || 
+            (selectedCharGroup == CG_PUNCT_ONLY) ||
+            (selectedCharGroup == CG_LETTERS_AND_PUNCT) ||
+            (selectedCharGroup == CG_DIGITS_AND_PUNCT))
         {
           filteredWord += *t_it;
         }
@@ -275,7 +356,7 @@ string getUtf8Token(std::istream &stream,
         // Buchstabe/Zahl
         if ((c >= 65) && (c <= 90))
         {
-          // Groß- -> Kleinbuchstabe
+          // Wandle Groß- -> Kleinbuchstabe
           c += 32;
         }
         word += c;
@@ -384,8 +465,8 @@ string getUtf8Token(std::istream &stream,
   return word;
 }
 
-/** Liest ein ganzes Wort aus der bereits geöffneten
- * UTF8 Datei.
+/** Liest ein ganzes Wort aus dem bereits geöffneten
+ * Stream (UTF8 Datei).
  */
 string readUtf8Word(std::istream &stream,
                     int &error)
@@ -403,6 +484,13 @@ string readUtf8Word(std::istream &stream,
   while (!stream.eof()) 
   {
     utf8Token = getUtf8Token(stream, tokenType, tokenError);
+#ifdef DEBUG_PARSER    
+    std::cerr << "T <" << utf8Token << ">  type " << tokenTypeString(tokenType);
+    std::cerr << " error " << tokenErrorString(tokenError);
+    std::cerr << " mode " << parseModeString(utf8ParseMode);
+    std::cerr << " <" << utf8LastToken << ">\n";
+    std::cerr.flush();
+#endif
     if (tokenError == MM_UTF8_WORD)
     {
       if (tokenType == TT_SPACE)
@@ -414,12 +502,14 @@ string readUtf8Word(std::istream &stream,
             (utf8ParseMode == PM_PUNCT_BEHIND) ||
             (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
         {
-          if ((utf8ParseMode == PM_PUNCT_BEHIND) ||
-              (utf8ParseMode == PM_WORD) ||
-              (utf8ParseMode == PM_PUNCT) ||
-              (utf8ParseMode == PM_PUNCT_CONT))
+          // SPC1: insert last punctuation before a space
+          if (utf8ParseMode != PM_PUNCT_BEHIND_CONT)
           {
-            word += utf8LastToken;
+            // Support for SPC3: don't add single apostrophe again
+            if (utf8LastToken != "'")
+            {
+              word += utf8LastToken;
+            }
             utf8LastToken = "";
           }
           utf8ParseMode = PM_SPACE;
@@ -443,13 +533,13 @@ string readUtf8Word(std::istream &stream,
             (utf8ParseMode == PM_PUNCT_CONT) ||
             (utf8ParseMode == PM_WORD))
         {
-          // Ggf. führendes Apostroph einfügen
+          // SPC2: insert leading apostrophe
           word += utf8LastToken;
         }
         else if ((utf8ParseMode == PM_PUNCT_BEHIND) ||
                  (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
         {
-          // Spezialfall: I've
+          // SPC3: finish word unless I've construct encountered
           if ((utf8ParseMode != PM_PUNCT_BEHIND) ||
               (utf8LastToken != "'"))
           {
@@ -476,6 +566,7 @@ string readUtf8Word(std::istream &stream,
             found = separatorChars.find(utf8Token);
             if (found != string::npos)
             {
+              // SPC4: punctation that is not trailing but separating ends the word
               error = MM_UTF8_WORD;
               utf8ParseMode = PM_SPACE;
               return word;
@@ -483,34 +574,51 @@ string readUtf8Word(std::istream &stream,
           }
 
           utf8ParseMode = PM_PUNCT_BEHIND;
-          utf8LastToken = utf8Token;
+          if (utf8Token == "'")
+          {
+            // Support for SPC3: would've
+            utf8LastToken = utf8Token;
+          }
+          else
+          {
+            utf8LastToken = "";
+          }
         }
         else if (utf8ParseMode == PM_PUNCT)
         {
-          if (selectedCharGroup == 4)
-          {
-            word += utf8LastToken;
-          }
           utf8LastToken = "";
-          std::size_t found = leadingChars.find(utf8Token);
-          if (found != string::npos)
+          if (selectedCharGroup == CG_PUNCT_ONLY)
           {
-            utf8LastToken = utf8Token;
+            // SPC5: allow single punctuation chars to come through
+            word += utf8Token;
+          }
+          else
+          {
+            std::size_t found = leadingChars.find(utf8Token);
+            if (found != string::npos)
+            {
+              // SPC6: allow and reduce leading punctuation chars
+              utf8LastToken = utf8Token;
+            }
           }
           utf8ParseMode = PM_PUNCT_CONT;
         }
         else if (utf8ParseMode == PM_PUNCT_CONT)
         {
-          if (selectedCharGroup == 4)
-          {
-            word += utf8LastToken;
-          }
-
           utf8LastToken = "";
-          std::size_t found = leadingChars.find(utf8Token);
-          if (found != string::npos)
+          if (selectedCharGroup == CG_PUNCT_ONLY)
           {
-            utf8LastToken = utf8Token;
+            // SPC5: allow single punctuation chars to come through
+            word += utf8Token;
+          }
+          else
+          {
+            std::size_t found = leadingChars.find(utf8Token);
+            if (found != string::npos)
+            {
+              // SPC7: reduce leading punctuation chars
+              utf8LastToken = utf8Token;
+            }
           }
         }
         else if (utf8ParseMode == PM_PUNCT_BEHIND)
@@ -518,6 +626,7 @@ string readUtf8Word(std::istream &stream,
           std::size_t found = separatorChars.find(utf8Token);
           if (found != string::npos)
           {
+            // SPC8: trailing separator chars end the word
             word += utf8Token;
             utf8ParseMode = PM_SPACE;
             return word;
@@ -526,11 +635,10 @@ string readUtf8Word(std::istream &stream,
           found = apostropheChars.find(utf8Token);
           if (found != string::npos)
           {
-            cout.flush();
             found = trailingChars.find(utf8LastToken);
             if (found != string::npos)
             {
-              // Schließendes Apostroph hinzufügen
+              // SPC9: insert first apostrophe char that is trailing
               word += utf8Token;
             }
           }
@@ -542,6 +650,7 @@ string readUtf8Word(std::istream &stream,
           std::size_t found = separatorChars.find(utf8Token);
           if (found != string::npos)
           {
+            // SPC10: a separator char behind trailing punctuation is allowed and ends the word
             word += utf8Token;
             utf8ParseMode = PM_SPACE;
             return word;
@@ -551,18 +660,28 @@ string readUtf8Word(std::istream &stream,
         {
           // PM_VOID, PM_SPACE, PM_SPACE_CONT
           utf8LastToken = "";
-          std::size_t found = leadingChars.find(utf8Token);
-          if (found != string::npos)
+          if (selectedCharGroup == CG_PUNCT_ONLY)
           {
-            utf8LastToken = utf8Token;
+            // SPC12: punctuation char before unknown char is added to the word
+            word += utf8Token;
+          }
+          else
+          {
+            std::size_t found = leadingChars.find(utf8Token);
+            if (found != string::npos)
+            {
+              // SPC11: leading punctuation char can start a new word
+              utf8LastToken = utf8Token;
+            }
           }
           utf8ParseMode = PM_PUNCT;
         }
       }
       else
       {
-        if (selectedCharGroup == 4)
+        if (selectedCharGroup == CG_PUNCT_ONLY)
         {
+          // SPC12: punctuation char before unknown char is added to the word
           word += utf8LastToken;
         }
 
@@ -572,6 +691,78 @@ string readUtf8Word(std::istream &stream,
             (utf8ParseMode == PM_PUNCT_CONT) ||
             (utf8ParseMode == PM_PUNCT_BEHIND) ||
             (utf8ParseMode == PM_PUNCT_BEHIND_CONT))
+        {
+          // SPC13: unknown char ends the word
+          utf8ParseMode = PM_SPACE;
+          error = MM_UTF8_WORD;
+          return word;
+        }
+        // Behandeln als Leerzeichen
+        utf8ParseMode = PM_SPACE;
+      }
+    }
+  }
+
+  if (!word.empty())
+  {
+    error = MM_UTF8_WORD;
+  }
+  else
+  {
+    error = MM_UTF8_EOF;
+  }
+  return word;
+}
+
+/** Liest ein ganzes Wort aus dem bereits geöffneten
+ * Stream (UTF8 Datei) im Verbatim-Mode, d.h. die
+ * einzelnen Worte werden nicht als Freitext behandelt
+ * und nur an den Leerzeichen/Whitespaces getrennt.
+ */
+string readUtf8WordVerbatim(std::istream &stream,
+                            int &error)
+{
+  if (stream.eof())
+  {
+    error = MM_UTF8_EOF;
+    return "";
+  }
+
+  string word;
+  string utf8Token;
+  int tokenType;
+  int tokenError;
+  utf8LastToken = "";
+  while (!stream.eof()) 
+  {
+    utf8Token = getUtf8Token(stream, tokenType, tokenError);
+    if (tokenError == MM_UTF8_WORD)
+    {
+      if (tokenType == TT_SPACE)
+      {
+        // Whitespace
+        if (utf8ParseMode == PM_WORD)
+        {
+          utf8ParseMode = PM_SPACE;
+          error = MM_UTF8_WORD;
+          return word;
+        }
+        else
+        {
+          // PM_VOID/PM_SPACE
+          utf8ParseMode = PM_SPACE;
+        }
+      }
+      else if ((tokenType == TT_CHAR) ||
+               (tokenType == TT_PUNCT) ||
+               (tokenType == TT_PUNCTEXT))
+      {
+        utf8ParseMode = PM_WORD;
+        word += utf8Token;
+      }
+      else
+      {
+        if (utf8ParseMode == PM_WORD)
         {
           // Aktuelles Wort beendet
           utf8ParseMode = PM_SPACE;
@@ -595,7 +786,7 @@ string readUtf8Word(std::istream &stream,
   return word;
 }
 
-/** Gibt den Input (Utf8-Datei) mit ihren erkannten/geparsten Worten
+/** Gibt den Input-Stream (Utf8-Datei) mit seinen erkannten/geparsten Worten
  * auf den Output-Stream aus.
  */
 void parseUtf8FileToStream(std::istream &stream,
@@ -649,4 +840,50 @@ void parseUtf8FileToStdout(const string &filePath)
     return;
 
   parseUtf8FileToStream(file, cout);
+}
+
+/** Gibt den Input-Stream (Utf8-Datei) mit seinen erkannten/geparsten Worten
+ * auf den Output-Stream aus. Hierbei wird der Input nicht als Freitext
+ * behandelt sonder nur an den Whitespaces (Leerzeichen usw.) getrennt
+ * und ausgegeben
+ */
+void parseUtf8FileToStreamVerbatim(std::istream &stream,
+                                   std::ostream &out)
+{
+  int error = 0;
+  int lineLength = 0;
+  string word;
+  // Erstes Wort lesen
+  while (1)
+  {
+    word = readUtf8WordVerbatim(stream, error);
+    if (!word.empty())
+      break;
+    // Datei am Ende?
+    if (error != MM_UTF8_WORD)
+      return;
+  }
+  out << word;
+  out.flush();
+  lineLength += word.size();
+  while (error != MM_UTF8_EOF)
+  {
+    word = readUtf8WordVerbatim(stream, error);
+    if ((error == MM_UTF8_WORD) &&
+        (!word.empty()))
+    {
+      if (lineLength < stdoutLineLength)
+      {
+        out << " " << word;
+        lineLength += 1 + word.size();
+      }
+      else
+      {
+        out << "\n" << word;
+        lineLength = word.size();
+      }
+      out.flush();
+    }
+  }
+  out << endl;
 }

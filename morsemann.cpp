@@ -246,19 +246,19 @@ void charGroupSelection(void)
     /* Cursor hoch */
     if (b == KEY_UP)
     {
-      if (selectedCharGroup == 1) selectedCharGroup = 8;
+      if (selectedCharGroup == CG_ALL_CHARS) selectedCharGroup = 8;
       else --selectedCharGroup;
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
-      if (selectedCharGroup == 8) selectedCharGroup = 1;
+      if (selectedCharGroup == CG_ENTERED_CHAR_SET) selectedCharGroup = 1;
       else ++selectedCharGroup;
     }
   }
 
-  if (selectedCharGroup == 8)
+  if (selectedCharGroup == CG_ENTERED_CHAR_SET)
   {
     readCharSet();
   }
@@ -510,7 +510,7 @@ void morseOptionsMenu(int akt)
   }
 
   /* Zeichenmenge anzeigen, falls Option "Zeichen eingeben" gewählt */
-  if (selectedCharGroup == 8)
+  if (selectedCharGroup == CG_ENTERED_CHAR_SET)
   {
     writeSelection("Zeichenmenge:", centerX-6, centerY+7, 1, 2);
     if ((centerX-(charSetLength/2)) > 0)

@@ -27,6 +27,16 @@
 #define MM_UTF8_EOF 3
 #define MM_UTF8_WORD 4
 
+#define CG_NONE 0
+#define CG_ALL_CHARS 1
+#define CG_LETTERS_ONLY 2
+#define CG_DIGITS_ONLY 3
+#define CG_PUNCT_ONLY 4
+#define CG_LETTERS_AND_DIGITS 5
+#define CG_LETTERS_AND_PUNCT 6
+#define CG_DIGITS_AND_PUNCT 7
+#define CG_ENTERED_CHAR_SET 8
+
 /*-------------------------------------------------------- Typedefs */
 
 typedef unsigned int keyChar;

@@ -258,6 +258,7 @@ void writeSelection(const string& str, int xpos, int ypos,
 
 /** Liest einen String an der Position (xpos,ypos) im
 Fenster \a curwin mit maximal \a max Buchstaben linksbündig ein.
+@warning Erlaubt bei der Eingabe keine Leerzeichen!
 @param curwin Fenster
 @param xpos x-Koordinate
 @param ypos y-Koordinate
@@ -301,7 +302,8 @@ int confirmString(WINDOW *curwin, int xpos, int ypos, int max, string& str)
     }
     else
     {
-      if ((letter > 31) && (letter != KEY_REPEAT_MORSE))
+      // 'Printable' Buchstabe und kein Leerzeichen? 
+      if ((letter > 32) && (letter != KEY_REPEAT_MORSE))
       {
         if (stringLength < max)
         {
@@ -336,6 +338,7 @@ int confirmString(WINDOW *curwin, int xpos, int ypos, int max, string& str)
 
 /** Liest einen String an der Position (xpos,ypos) mit maximal
 \a max Buchstaben linksbündig ein.
+@warning Erlaubt die Eingabe von Leerzeichen im String!
 @param xpos x-Koordinate
 @param ypos y-Koordinate
 @param max Maximale Anzahl der Buchstaben
@@ -369,6 +372,7 @@ string readString(int xpos, int ypos, int max, const string& str)
     }
     else
     {
+      // 'Printable' Buchstabe oder Leerzeichen
       if (letter > 31)
       {
         if (stringLength < max)
@@ -428,7 +432,8 @@ unsigned long int readNumber(int xpos, int ypos, int max, unsigned long int numb
     }
     else
     {
-      if ((letter > 47) && (letter < 58))
+      // Ist der Buchstabe eine 'Nummer'?
+      if (isdigit(letter))
       {
         if (stringLength < max)
         {
