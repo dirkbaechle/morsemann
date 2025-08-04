@@ -29,19 +29,26 @@ SOUNDLIBS = -lasound
 TARGET = morsemann
 CINCLUDES = -I./mmsound -I./mmscreen -I./mmword -I./inih -I./inih/cpp -I.
 CLIBS = -L./mmscreen -lmmscreen $(CURSESLIB) -L./mmsound -lmmsound $(SOUNDLIBS) -L./mmword -lmmword -L./inih -linih
+CTESTLIBS = -L./mmword -lmmword
 
 export CXXFLAGS
 
 all: $(TARGET).cpp mmconfig.cpp mmsound/libmmsound.a mmscreen/libmmscreen.a mmword/libmmword.a inih/libinih.a 
 	$(CXX) $(TARGET).cpp mmconfig.cpp -o $(TARGET) $(CXXFLAGS) $(CINCLUDES) $(CLIBS)
 
-mmsound/libmmsound.a:
+test: $(TARGET)_tests.cpp mmword/libmmword.a 
+	$(CXX) $(TARGET)_tests.cpp -o $(TARGET)_tests $(CXXFLAGS) $(CINCLUDES) $(CTESTLIBS)
+
+mmsound/libmmsound.a: mmsound/mmsound.cpp mmsound/mmsound.h \
+                      mmsound/beep.cpp mmsound/beep.h \
+                      mmsound/alarm.cpp mmsound/alarm.h
 	make -C mmsound
 
-mmscreen/libmmscreen.a:
+mmscreen/libmmscreen.a: mmscreen/mmscreen.cpp mmscreen/mmscreen.h
 	make -C mmscreen
 
-mmword/libmmword.a:
+mmword/libmmword.a: mmword/mmword.cpp mmword/mmword.h \
+                    mmword/utf8file.cpp mmword/utf8file.h
 	make -C mmword
 
 inih/libinih.a:
@@ -52,10 +59,10 @@ allusers:
 	chmod a+sx ./morsemann
 
 clean:
-	rm -f morsemann
+	rm -f morsemann morsemann_tests
 
 clean-dist:
-	rm -f morsemann
+	rm -f morsemann morsemann_tests
 	make -C mmsound clean
 	make -C mmscreen clean
 	make -C mmword clean

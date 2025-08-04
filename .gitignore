@@ -9,3 +9,4 @@ mmword/*.a
 inih/*.o
 inih/*.a
 morsemann
+morsemann_tests

@@ -17,7 +17,7 @@ using std::string;
 /*------------------------------------------------ Global variables */
 
 /** Auswahl der Zeichenmenge (1-8) */
-int selectedCharGroup = 1;
+int selectedCharGroup = CG_ALL_CHARS;
 /** Art der Wortgruppen (0=fest, 1=variabel) */
 int variableWords = 0;
 /** Länge der festen Wortgruppen */
@@ -108,12 +108,12 @@ char signRandom(void)
 {
   switch (selectedCharGroup)
   {
-     case 1: return(mapToChar(mmRandom(41)+1));
-     case 2: return(mapToChar(mmRandom(26)+1));
-     case 3: return(mapToChar(mmRandom(10)+27));
-     case 4: return(mapToChar(mmRandom(5)+37));
-     case 5: return(mapToChar(mmRandom(36)+1));
-     case 6: if (mmRandom(2) == 0)
+     case CG_ALL_CHARS: return(mapToChar(mmRandom(41)+1));
+     case CG_LETTERS_ONLY: return(mapToChar(mmRandom(26)+1));
+     case CG_DIGITS_ONLY: return(mapToChar(mmRandom(10)+27));
+     case CG_PUNCT_ONLY: return(mapToChar(mmRandom(5)+37));
+     case CG_LETTERS_AND_DIGITS: return(mapToChar(mmRandom(36)+1));
+     case CG_LETTERS_AND_PUNCT: if (mmRandom(2) == 0)
 	     {
 	       return(mapToChar(mmRandom(26)+1));
 	     }
@@ -121,7 +121,7 @@ char signRandom(void)
 	     {
 	       return(mapToChar(mmRandom(5)+37));
 	     }
-     case 7: return(mmRandom(15)+27);
+     case CG_DIGITS_AND_PUNCT: return(mmRandom(15)+27);
      default: return(charSetRandom());
   }
 

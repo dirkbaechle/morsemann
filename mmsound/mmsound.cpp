@@ -23,10 +23,13 @@ static unsigned int mmslBpm = 60;
 static unsigned int mmslDotLength = 100;
 /** Pausenfaktor */
 unsigned int mmslDelayFactor = 1;
-/** Rampe für das Formen (Smoothing) der Morsezeichen in ms */
+/** Länge der Rampe für das Formen (Smoothing) der Morsezeichen in ms */
 unsigned long int rampLength = 2;
+/** Frequenz für die Ausgabe der Morsezeichen. */
 static unsigned int mmslFrequency = 800;
+/** Gewählte Funktion für das Formen (Smoothing) der Morsezeichen (0-2) */
 static unsigned int mmslSmoothen = 3;
+/** Gewähltes Sound-System für die Ausgabe der Morsezeichen (PC-Speaker oder ALSA) */
 static int mmslSystem = MMSL_NONE;
 
 #ifdef HAVE_ALSA
@@ -69,7 +72,7 @@ bool initAlsa(const std::string& device)
 		return false;
 	}
 
-  // Ensure that all audio buffer are written before returning
+  // Ensure that all audio buffers are written before returning
   // from e.g. a drain (snd_pcm_drain()).
   snd_pcm_nonblock(pcm_handle, 0);
   return true;
@@ -177,7 +180,7 @@ float smoothStep(float x)
   return x * x * (3.0f - 2.0f * x);
 }
 
-// Smoothstep, version B, f(x) = -2x^3 + 3x^2
+// Smoothstep, version B, f(x) = 6x^5 - 15x^4 + 10x^3
 float smootherStep(float x) 
 {
   if (x <= 0.0)
@@ -565,7 +568,7 @@ const map<int, string> cwCode = {
 {44, "--..--"},  // ,
 {46, ".-.-.-"},  // .
 {63, "..--.."},  // ?
-{47, "-..-."},   // !
+{47, "-..-."},   // /
 {61, "-...-"},   // =
 // Start der Zeichen die wir normalerweise nicht im Morsetext ausgeben
 {33, "-.-.--"},  // !
@@ -631,6 +634,7 @@ int mmslMorseWord(const string &msg)
       unsigned long int endOfChar = 0;
       if (wordDuration < BUF_LEN)
       {
+        // Das gesamte Wort wird in den Buffer gerendert
         clearGlobalBuffer();
         for (unsigned int scnt = 0; scnt < slen; ++scnt)
         {
@@ -652,7 +656,8 @@ int mmslMorseWord(const string &msg)
       }
       else
       {
-        // Einzelne Zeichen ausgeben
+        // Der Buffer ist bei aktueller Geschwindigkeit zu klein...
+        // die Zeichen werden einzeln ausgeben
         for (unsigned int scnt = 0; scnt < slen; ++scnt)
         {
           map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);

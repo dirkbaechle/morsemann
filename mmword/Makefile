@@ -17,7 +17,7 @@ RANLIB = ranlib
 #
 
 TARGET = mmword
-AROBJS = mmword.o
+AROBJS = mmword.o utf8file.o
 CINCLUDES = -DLINUX
 
 all: lib$(TARGET).a

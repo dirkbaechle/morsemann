@@ -43,6 +43,7 @@ von Morsezeichen (CW).
 #include "mmsound.h"
 #include "mmscreen.h"
 #include "mmword.h"
+#include "utf8file.h"
 #include "mmconfig.h"
 #include "global.h"
 
@@ -245,19 +246,19 @@ void charGroupSelection(void)
     /* Cursor hoch */
     if (b == KEY_UP)
     {
-      if (selectedCharGroup == 1) selectedCharGroup = 8;
+      if (selectedCharGroup == CG_ALL_CHARS) selectedCharGroup = 8;
       else --selectedCharGroup;
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
-      if (selectedCharGroup == 8) selectedCharGroup = 1;
+      if (selectedCharGroup == CG_ENTERED_CHAR_SET) selectedCharGroup = 1;
       else ++selectedCharGroup;
     }
   }
 
-  if (selectedCharGroup == 8)
+  if (selectedCharGroup == CG_ENTERED_CHAR_SET)
   {
     readCharSet();
   }
@@ -509,7 +510,7 @@ void morseOptionsMenu(int akt)
   }
 
   /* Zeichenmenge anzeigen, falls Option "Zeichen eingeben" gewählt */
-  if (selectedCharGroup == 8)
+  if (selectedCharGroup == CG_ENTERED_CHAR_SET)
   {
     writeSelection("Zeichenmenge:", centerX-6, centerY+7, 1, 2);
     if ((centerX-(charSetLength/2)) > 0)
@@ -1226,16 +1227,28 @@ int main(int argc, char *argv[])
   }
   configPath += "mmconfig.ini";
 
-  if ((argc > 2) &&
-      ((strcmp(argv[1], "-c") == 0) || 
-       (strcmp(argv[1], "--config") == 0)))
+  if (argc > 2)
   {
-    configPath = argv[2];
+    if (((strcmp(argv[1], "-c") == 0) || 
+         (strcmp(argv[1], "--config") == 0)))
+    {
+      configPath = argv[2];
+    }
   }
 
   config.readFromFile(configPath);
   setConfigValuesToSystem(config);
  
+  if (argc > 2)
+  {
+    if (((strcmp(argv[1], "-p") == 0) || 
+         (strcmp(argv[1], "--parse-file") == 0)))
+    {
+      parseUtf8FileToStdout(string(argv[2]));
+      return 0;
+    }
+  }
+
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
 
