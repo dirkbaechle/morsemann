@@ -915,8 +915,20 @@ void outputMorseCode(void)
   int intent = MM_CONTINUE; // do we want to stop, or continue going?
   int errors = 0;
   keyChar b = '0';
+  int wordError = MM_UTF8_WORD;
 
   clrscr();
+
+  if (MM_WM_FILE == wordMode)
+  {
+    if (MM_FALSE == utf8FileContainsWords())
+    {
+      
+      writeSelection("Given file is empty!",centerX-10, centerY-3, 1, 2);
+      getch();
+      return;
+    }
+  }
 
   // Windows erzeugen
   WINDOW *mainwin = nullptr;
@@ -943,9 +955,10 @@ void outputMorseCode(void)
   mmslPrepareSoundStream();
   mmslPlayPause(1000);
 
+  prepareWordFile();
   errorCount = 0;
 
-  lastWord = getNextWord();
+  lastWord = getNextWord(wordError);
   currentLength += lastWord.size();
   lineCount = lastWord.size();
 
@@ -1004,7 +1017,7 @@ void outputMorseCode(void)
       }
     }
 
-    lastWord = getNextWord();
+    lastWord = getNextWord(wordError);
     currentLength += lastWord.size();
 
     // Passt das neue Wort noch in die aktuelle Zeile?
@@ -1035,10 +1048,13 @@ void outputMorseCode(void)
       }
     }
 
-  } while ((currentLength <= totalLength) && (intent == MM_CONTINUE));
+  } while ((currentLength <= totalLength) && 
+           (intent == MM_CONTINUE) && 
+           (wordError != MM_UTF8_EOF));
 
   writeStringW(mainwin, "\n\r+");
   mmslMorseWord("+");
+  releaseWordFile();
   if (confirmWords == MM_TRUE)
   {
     writeStringW(mainwin, "   (");

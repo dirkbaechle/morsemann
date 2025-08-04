@@ -61,6 +61,8 @@ int stdoutLineLength = 80;
 
 /*--------------------------------------------------- Functions */
 
+int utf8FileIsOpen();
+
 #ifdef DEBUG_PARSER
 
 /** Gibt den Namen des TokenTyps als String zurück. */
@@ -155,11 +157,23 @@ void resetUtf8Parser()
  */
 int utf8FileContainsWords()
 {
-  // TODO read a single word from the file,
-  // open it first if necessary, and then
-  // close it.
+  if (MM_TRUE == utf8FileIsOpen())
+  {
+    closeUtf8File();
+  }
 
-  return MM_TRUE;
+  if (MM_TRUE == openUtf8File())
+  {
+    int error;
+    string word = readUtf8Word(file, error);
+    closeUtf8File();
+    if ((error == MM_UTF8_WORD) && (word.size() > 0))
+    {
+      return MM_TRUE;
+    }
+  }
+
+  return MM_FALSE;
 }
 
 /** Liefert 'true' (1 == MM_TRUE) wenn die UTF8 Datei geöffnet ist,
@@ -727,6 +741,14 @@ string readUtf8Word(std::istream &stream,
   return word;
 }
 
+/** Liest ein ganzes Wort aus der bereits geöffneten
+ * UTF8 Datei.
+ */
+string readUtf8WordFromOpenFile(int &error)
+{
+  return readUtf8Word(file, error);
+}
+
 /** Liest ein ganzes Wort aus dem bereits geöffneten
  * Stream (UTF8 Datei) im Verbatim-Mode, d.h. die
  * einzelnen Worte werden nicht als Freitext behandelt
@@ -797,6 +819,16 @@ string readUtf8WordVerbatim(std::istream &stream,
     error = MM_UTF8_EOF;
   }
   return word;
+}
+
+/** Liest ein ganzes Wort aus der bereits geöffneten
+ * UTF8 Datei im Verbatim-Mode, d.h. die
+ * einzelnen Worte werden nicht als Freitext behandelt
+ * und nur an den Leerzeichen/Whitespaces getrennt.
+ */
+string readUtf8WordFromOpenFileVerbatim(int &error)
+{
+  return readUtf8WordVerbatim(file, error);
 }
 
 /** Gibt den Input-Stream (Utf8-Datei) mit seinen erkannten/geparsten Worten

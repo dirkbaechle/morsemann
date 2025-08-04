@@ -38,6 +38,8 @@ extern char signRandom(void);
 extern void mmwlSetCountErrorsPerWord(int countWords);
 extern int mmwlGetCountErrorsPerWord();
 extern int compareStrings(const std::string &userWord, const std::string &lastWord);
-extern std::string getNextWord();
+extern std::string getNextWord(int &error);
+extern void prepareWordFile();
+extern void releaseWordFile();
 
 #endif
