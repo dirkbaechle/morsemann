@@ -1024,15 +1024,15 @@ void outputMorseCode(void)
   wrefresh(mainwin);
   updateInfos(infowin);
 
-  mmslPrepareSoundStream();
-  mmslPlayPause(1000);
-
   prepareWordFile();
   errorCount = 0;
 
   lastWord = getNextWord(wordError);
   currentLength += lastWord.size();
   lineCount = lastWord.size();
+
+  mmslPrepareSoundStream();
+  mmslPlayPause(1000);
 
   do
   {
