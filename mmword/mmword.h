@@ -25,6 +25,7 @@ extern std::string groupString[8];
 
 extern int wordMode;
 extern std::string fileName;
+extern std::string filePath;
 extern int fileWordsRandom;
 extern unsigned long int filePosition;
 extern int fileWordsExtendedCharset;
@@ -38,6 +39,8 @@ extern char signRandom(void);
 extern void mmwlSetCountErrorsPerWord(int countWords);
 extern int mmwlGetCountErrorsPerWord();
 extern int compareStrings(const std::string &userWord, const std::string &lastWord);
-extern std::string getNextWord();
+extern std::string getNextWord(int &error);
+extern void prepareWordFile();
+extern void releaseWordFile();
 
 #endif

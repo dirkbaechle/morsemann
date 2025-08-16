@@ -2,11 +2,14 @@
 /*-------------------------------------------------------- Includes */
 
 #include "mmword.h"
+#include "utf8file.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 
 using std::string;
+using std::vector;
 
 /*--------------------------------------------------------- Defines */
 
@@ -44,6 +47,8 @@ string groupString[8] = {"Alle Zeichen",
 int wordMode = MM_WM_RANDOM;
 /** Name der aktuellen Datei, aus der neue Wörter entnommen werden sollen. */
 string fileName;
+/** Der volle (aufgelöste) Pfad auf die aktuelle Datei, aus der neue Wörter entnommen werden sollen. */
+string filePath;
 /** Enthält die Datei einzelne Worte pro Zeile, die zufällig ausgegeben werden
  * sollen, oder ist es ein Text der zusammenhängend gegeben wird (0=nein/text, 1=ja/zufällig)?
  */
@@ -54,7 +59,10 @@ unsigned long int filePosition = 0;
  * oder nur die DTP-relevanten (0=nein/dtp, 1=ja/alle)?
  */
 int fileWordsExtendedCharset = MM_FALSE;
-
+/** Worte die aus der gegebenen Datei gelesen wurden und zufällig
+ * ausgegeben werden sollen.
+ */
+vector<string> randomWords;
 
 /*--------------------------------------------------- Functions */
 
@@ -172,12 +180,26 @@ int compareStrings(const string &userWord, const string &lastWord)
 Einstellungen (Wortlänge, Zeichenmenge usw.) und liefert dieses
 als String zurück. 
 */
-string getNextWord()
+string getNextWord(int &error)
 {
   string word;
 
+  error = MM_UTF8_WORD;
   if (wordMode == MM_WM_PARIS)
     return string("paris");
+
+  if (MM_WM_FILE == wordMode)
+  {
+    if (MM_TRUE == fileWordsRandom)
+    {
+      return randomWords[mmRandom(randomWords.size())];
+    }
+    else
+    {
+      ++filePosition;
+      return readUtf8WordFromOpenFile(error);
+    }
+  }
 
   int wordLength = fixedWordLength;
   int charCount = 0;
@@ -193,6 +215,84 @@ string getNextWord()
   } while (charCount < wordLength);
 
   return word;
+}
+
+/** Öffnet vor der Ausgabe der Morsezeichen die Eingabedatei
+ * im UTF8-Format, falls ein Dateiname angegeben wurde.
+ * Im Random-Modus werden alle Worte aus der Datei in einen
+ * vector<string> gelesen aus dem dann zufällig Worte ausgewählt
+ * werden. Im Text-Modus werden die einzelnen Worte sequenziell
+ * ausgegeben bis die maximale Zeichenanzahl oder das Ende der
+ * Datei erreicht ist.
+ */
+void prepareWordFile()
+{
+  if (MM_WM_FILE == wordMode)
+  {
+    int error;
+    string word;
+    if (MM_FALSE == fileWordsRandom)
+    {
+      openUtf8File();
+      if (filePosition > 0)
+      {
+        // try to fast-forward the file
+        unsigned long readWords = 0;
+
+        do
+        {
+          word = readUtf8WordFromOpenFile(error);
+          if (error == MM_UTF8_EOF)
+          {
+            filePosition = 0;
+            closeUtf8File();
+            openUtf8File();
+            break;
+          }
+          ++readWords;
+        } while (readWords < filePosition);
+      }
+    }
+    else
+    {
+      openUtf8File();
+      randomWords.clear();
+      do
+      {
+        word = readUtf8WordFromOpenFileVerbatim(error);
+        if ((error != MM_UTF8_EOF) && (word.size() > 0))
+        {
+          vector<string>::const_iterator s_it = randomWords.begin();
+          for (; s_it != randomWords.end(); ++s_it)
+          {
+            if (*s_it == word)
+            {
+              break;
+            }
+          }
+          if (s_it == randomWords.end())
+          {
+            // new word
+            randomWords.push_back(word);
+          }
+        }
+      } while (error != MM_UTF8_EOF);
+      closeUtf8File();
+    }
+  }
+}
+
+/** Schließt nach der Ausgabe der Morsezeichen
+ * die ggf. noch geöffnete Eingabedatei.
+ */
+void releaseWordFile()
+{
+  if ((MM_WM_FILE == wordMode) &&
+      (MM_FALSE == fileWordsRandom))
+  {
+    closeUtf8File();
+  }
+  randomWords.clear();
 }
 
 void mmwlSetCountErrorsPerWord(int countWords)

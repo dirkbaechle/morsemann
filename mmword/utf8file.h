@@ -3,8 +3,6 @@
 
 /*-------------------------------------------------------- Includes */
 
-#include "global.h"
-
 #include <string>
 
 /*--------------------------------------------------------- Defines */
@@ -15,10 +13,17 @@
 
 /*------------------------------------------------ Global variables */
 
+extern int utf8FileExists;
+extern int utf8FileContainsNoWords;
 
 /*------------------------------------------------------- Functions */
 
 extern void resetUtf8Parser();
+extern int utf8FileContainsWords();
+extern void rescanUtf8File();
+extern int openUtf8File(const std::string &fname = "");
+extern void closeUtf8File();
+extern int findExistingUtf8File(const std::string &fpath, std::string &respath);
 extern std::string readUtf8Char(std::istream &stream, int &error);
 extern std::string getFilteredUtf8Chars(std::string token, int type);
 extern std::string getUtf8Token(std::istream &stream, int &type, int &error);
@@ -27,5 +32,7 @@ extern void parseUtf8FileToStream(std::istream &stream, std::ostream &out);
 extern void parseUtf8FileToStdout(const std::string &filePath);
 extern std::string readUtf8WordVerbatim(std::istream &stream, int &error);
 extern void parseUtf8FileToStreamVerbatim(std::istream &stream, std::ostream &out);
+extern std::string readUtf8WordFromOpenFile(int &error);
+extern std::string readUtf8WordFromOpenFileVerbatim(int &error);
 
 #endif

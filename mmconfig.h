@@ -57,6 +57,8 @@ struct MMConfig
     int soundShaping;
     /** Werden Fehler pro Wort gezählt? (0=nein jeder Buchstabe einzeln, 1=ja) */
     int errorsPerWord;
+    /** Wird im Datei-Modus die gewählte Länge an Zeichen beachtet? (0=nein, 1=ja) */
+    int countCharsInFileMode;
     /** Sollen die Optionen/Einstellungen in der INI Datei gespeichert
      * werden? (0=nein, 1=ja)
      */

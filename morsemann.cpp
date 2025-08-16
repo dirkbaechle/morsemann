@@ -79,6 +79,8 @@ const int OPT_RIGHT_WIDTH = 8;
 const int MENU_WIDTH = 6;
 const int INFO_WIDTH = 20;
 
+const int MAX_FILENAME_LENGTH = 12;
+
 /*------------------------------------------------ Global variables */
 
 /** Gesamtzahl der zu gebenden Buchstaben */
@@ -89,6 +91,8 @@ int errorCount = 0;
 int selectMorseFrequencyRandomly = MM_TRUE;
 /** Tonhöhe in Hz falls die Tonhöhe fest gesetzt ist. */
 int fixedMorseFrequency = 800;
+/** Wird im Datei-Modus die gewählte Länge an Zeichen beachtet? (0=nein, 1=ja) */
+int countCharsInFileMode = MM_TRUE;
 /** Sollen die Optionen/Einstellungen in der INI Datei gespeichert
  * werden? (0=nein, 1=ja)
  */
@@ -444,16 +448,16 @@ void morseOptionsMenu(int akt)
   writeSelection("Geschwindigkeit (in BpM):", centerX-OPT_LEFT_WIDTH, centerY-4, 1, akt);
   writeSelection("Pausenfaktor:", centerX-OPT_LEFT_WIDTH, centerY-3, 2, akt);
   writeSelection("Zeichenanzahl:", centerX-OPT_LEFT_WIDTH, centerY-2, 3, akt);
-  writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY-1, 4, akt);
-  writeSelection("Worte erzeugen:", centerX-OPT_LEFT_WIDTH, centerY, 5, akt);
+  writeSelection("Zeichen:", centerX-OPT_LEFT_WIDTH, centerY-1, 4, akt);
+  writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY, 5, akt);
+  writeSelection("Worte erzeugen:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
 
   if (wordMode == MM_WM_RANDOM) {
-    writeSelection("Zeichen:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
     writeSelection("Feste Wortgruppen:", centerX-OPT_LEFT_WIDTH, centerY+2, 7, akt);
   } else if (wordMode == MM_WM_FILE) {
-    writeSelection("Dateiname:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
     writeSelection("Dateimodus:", centerX-OPT_LEFT_WIDTH, centerY+2, 7, akt);
-    writeSelection("Alle Zeichen geben:", centerX-OPT_LEFT_WIDTH, centerY+3, 8, akt);
+    writeSelection("Dateiname:", centerX-OPT_LEFT_WIDTH, centerY+3, 8, akt);
+    writeSelection("Alle Zeichen geben:", centerX-OPT_LEFT_WIDTH, centerY+4, 9, akt);
   }
 
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-4);
@@ -463,6 +467,8 @@ void morseOptionsMenu(int akt)
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeNumberULong(totalLength);
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
+  writeString(groupString[selectedCharGroup - 1]);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
   switch (confirmWords)
   {
     case 0: writeString("Nein");
@@ -471,11 +477,9 @@ void morseOptionsMenu(int akt)
             break;
   }
 
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
   if (wordMode == MM_WM_RANDOM) {
     writeString("Zufällig");
-    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
-    writeString(groupString[selectedCharGroup - 1]);
     gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
     if (variableWords == MM_FALSE)
     {
@@ -487,12 +491,6 @@ void morseOptionsMenu(int akt)
       writeString("Nein (3-8)");
   } else if (wordMode == MM_WM_FILE) {
     writeString("Aus Datei");
-    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
-    if (!fileName.empty()) {
-      writeString("Vorh.");
-    } else {
-      writeString("Nein");
-    }
     gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
     if (fileWordsRandom) {
       writeString("Worte");
@@ -500,6 +498,30 @@ void morseOptionsMenu(int akt)
       writeString("Text");
     }
     gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+3);
+    if (!fileName.empty()) {
+      if (fileName.size() < MAX_FILENAME_LENGTH)
+      {
+        writeString(fileName);
+      } else {
+        writeString("Gesetzt");
+      }
+      if (!utf8FileExists)
+      {
+        gotoxy(centerX+OPT_RIGHT_WIDTH-2, centerY+3);
+        writeString("!");
+      }
+      else
+      {
+        if (utf8FileContainsNoWords)
+        {
+          gotoxy(centerX+OPT_RIGHT_WIDTH-2, centerY+3);
+          writeString("~");
+        }
+      }
+    } else {
+      writeString("Nein");
+    }
+    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+4);
     if (fileWordsExtendedCharset) {
       writeString("Ja");
     } else {
@@ -528,7 +550,12 @@ void morseOptionsSelection(void)
 {
   keyChar b = '0';
   int currentOption = 1;
+  string oldFileName = fileName;
+  int oldCharGroup = selectedCharGroup;
+  string oldCharSet = charSet;
 
+  if (wordMode == MM_WM_FILE)
+    rescanUtf8File();
   while (b != KEY_BACKSPACE)
   {
     morseOptionsMenu(currentOption);
@@ -541,9 +568,9 @@ void morseOptionsSelection(void)
         if (wordMode == MM_WM_RANDOM)
           currentOption = 7;
         else if (wordMode == MM_WM_FILE)
-          currentOption = 8;
+          currentOption = 9;
         else
-          currentOption = 5;
+          currentOption = 6;
       }
       else --currentOption;
     }
@@ -555,10 +582,10 @@ void morseOptionsSelection(void)
         if (currentOption == 7) currentOption = 1;
         else ++currentOption;
       } else if (wordMode == MM_WM_FILE) {
-        if (currentOption == 8) currentOption = 1;
+        if (currentOption == 9) currentOption = 1;
         else ++currentOption;
       } else {
-        if (currentOption == 5) currentOption = 1;
+        if (currentOption == 6) currentOption = 1;
         else ++currentOption;
       }
     }
@@ -603,24 +630,46 @@ void morseOptionsSelection(void)
           break;
         case 3: lengthSelection();
           break;
-        case 4: confirmWords = 1 - confirmWords;
+        case 4: charGroupSelection();
+                if ((selectedCharGroup != oldCharGroup) ||
+                    ((selectedCharGroup == CG_ENTERED_CHAR_SET) &&
+                     (oldCharSet != charSet)))
+                {
+                  oldCharSet = charSet;
+                  oldCharGroup = selectedCharGroup;
+                  if (MM_WM_FILE == wordMode)
+                    rescanUtf8File();
+                }
           break;
-        case 5: if (wordMode == MM_WM_PARIS)
+        case 5: confirmWords = 1 - confirmWords;
+          break;
+        case 6: if (wordMode == MM_WM_PARIS)
                   wordMode = MM_WM_RANDOM;
                 else
                   wordMode = 1 - wordMode;
-          break;
-        case 6: if (wordMode == MM_WM_RANDOM)
-                  charGroupSelection();
-                else if (wordMode == MM_WM_FILE)
-                  fileNameSelection();
+                if (MM_WM_FILE == wordMode)
+                  rescanUtf8File();
           break;
         case 7: if (wordMode == MM_WM_RANDOM)
                   variableWords = 1 - variableWords;
                 else if (wordMode == MM_WM_FILE)
                   fileWordsRandom = 1 - fileWordsRandom;
           break;
+        case 8: if (wordMode == MM_WM_FILE)
+                {
+                  fileNameSelection();
+                  // Hat sich der Name der Datei geändert?
+                  if (fileName != oldFileName)
+                  {
+                    oldFileName = fileName;
+                    // Ja, also Wortzähler zurücksetzen
+                    filePosition = 0;
+                    rescanUtf8File();
+                  }
+                }
+          break;
         default: fileWordsExtendedCharset = 1 - fileWordsExtendedCharset;
+                 rescanUtf8File();
           break;
       }
 
@@ -733,22 +782,24 @@ void soundShapingSelection(void)
 void commonOptionsMenu(int akt)
 {
   clrscr();
-  writeSelection("*** Einstellungen ***", centerX-8, centerY-4, 1, 2);
+  writeSelection("*** Einstellungen ***", centerX-8, centerY-5, 1, 2);
 
-  writeSelection("Wahl der Tonhöhe", centerX-OPT_LEFT_WIDTH, centerY-2, 1, akt);
-  writeSelection("Feste Tonhöhe (in Hz):", centerX-OPT_LEFT_WIDTH, centerY-1, 2, akt);
-  writeSelection("Zeichen-Shaping:", centerX-OPT_LEFT_WIDTH, centerY, 3, akt);
-  writeSelection("Zähle Fehler pro:", centerX-OPT_LEFT_WIDTH, centerY+1, 4, akt);
-  writeSelection("Optionen speichern:", centerX-OPT_LEFT_WIDTH, centerY+2, 5, akt);
+  writeSelection("Wahl der Tonhöhe", centerX-OPT_LEFT_WIDTH, centerY-3, 1, akt);
+  writeSelection("Feste Tonhöhe (in Hz):", centerX-OPT_LEFT_WIDTH, centerY-2, 2, akt);
+  writeSelection("Zeichen-Shaping:", centerX-OPT_LEFT_WIDTH, centerY-1, 3, akt);
+  writeSelection("Zähle Fehler pro:", centerX-OPT_LEFT_WIDTH, centerY, 4, akt);
+  writeSelection("Zähle Zeichen (Datei):", centerX-OPT_LEFT_WIDTH, centerY+1, 5, akt);
+  writeSelection("Wortzähler (Datei):", centerX-OPT_LEFT_WIDTH, centerY+2, 6, akt);
+  writeSelection("Optionen speichern:", centerX-OPT_LEFT_WIDTH, centerY+3, 7, akt);
 
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-3);
   if (selectMorseFrequencyRandomly == MM_TRUE)
     writeString("zufällig");
   else
     writeString("fest");
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeNumber(fixedMorseFrequency);
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
   switch (mmslGetSmoothening()) {
     case 1:  writeString("x^3");
       break;
@@ -759,12 +810,19 @@ void commonOptionsMenu(int akt)
     default: writeString("Aus");
       break;
   }
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
   if (mmwlGetCountErrorsPerWord())
     writeString("Wort");
   else
     writeString("Buchstabe");
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
+  if (countCharsInFileMode == MM_FALSE)
+    writeString("Nein");
+  else
+    writeString("Ja");
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
+  writeNumber(filePosition);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+3);
   if (saveOptionsToIniFile == MM_FALSE)
     writeString("Nein");
   else
@@ -794,14 +852,14 @@ void commonOptionsSelection(void)
     /* Cursor hoch */
     if (b == KEY_UP)
     {
-      if (currentOption == 1) currentOption = 5;
+      if (currentOption == 1) currentOption = 7;
       else --currentOption;
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
-      if (currentOption == 5) currentOption = 1;
+      if (currentOption == 7) currentOption = 1;
       else ++currentOption;
     }
 
@@ -817,7 +875,11 @@ void commonOptionsSelection(void)
           break;
         case 4: mmwlSetCountErrorsPerWord(1 - mmwlGetCountErrorsPerWord());
           break;
-        case 5: saveOptionsToIniFile = 1 - saveOptionsToIniFile;
+        case 5: countCharsInFileMode = 1 - countCharsInFileMode;
+          break;
+        case 6: filePosition = 0;
+          break;
+        case 7: saveOptionsToIniFile = 1 - saveOptionsToIniFile;
           break;
       }
     }
@@ -915,8 +977,30 @@ void outputMorseCode(void)
   int intent = MM_CONTINUE; // do we want to stop, or continue going?
   int errors = 0;
   keyChar b = '0';
+  int wordError = MM_UTF8_WORD;
 
   clrscr();
+
+  if (MM_WM_FILE == wordMode)
+  {
+    rescanUtf8File();
+    if (utf8FileExists == MM_FALSE)
+    {
+      writeSelection("Angegebene Datei nicht gefunden!",centerX-16, centerY-3, 1, 2);
+      writeSelection(fileName, centerX-fileName.size()/2, centerY-1, 1, 2);
+      writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY-4, 1, 2);
+      getch();
+      return;
+    }
+    if (MM_TRUE == utf8FileContainsNoWords)
+    {
+      writeSelection("Die Datei enthält keine Wörter!",centerX-15, centerY-3, 1, 2);
+      writeSelection(fileName, centerX-fileName.size()/2, centerY-1, 1, 2);
+      writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY-4, 1, 2);
+      getch();
+      return;
+    }
+  }
 
   // Windows erzeugen
   WINDOW *mainwin = nullptr;
@@ -943,9 +1027,10 @@ void outputMorseCode(void)
   mmslPrepareSoundStream();
   mmslPlayPause(1000);
 
+  prepareWordFile();
   errorCount = 0;
 
-  lastWord = getNextWord();
+  lastWord = getNextWord(wordError);
   currentLength += lastWord.size();
   lineCount = lastWord.size();
 
@@ -1004,8 +1089,15 @@ void outputMorseCode(void)
       }
     }
 
-    lastWord = getNextWord();
+    lastWord = getNextWord(wordError);
     currentLength += lastWord.size();
+    if ((MM_UTF8_EOF == wordError) &&
+        (MM_WM_FILE == wordMode) &&
+        (MM_FALSE == fileWordsRandom))
+    {
+      // Wortzähler zurücksetzen
+      filePosition = 0;
+    }
 
     // Passt das neue Wort noch in die aktuelle Zeile?
     if (((int) lastWord.size())+lineCount < (screenX-1))
@@ -1035,10 +1127,26 @@ void outputMorseCode(void)
       }
     }
 
-  } while ((currentLength <= totalLength) && (intent == MM_CONTINUE));
+  } while (((currentLength <= totalLength) ||
+            ((MM_WM_FILE == wordMode) &&
+             (MM_FALSE == countCharsInFileMode))) && 
+           (intent == MM_CONTINUE) && 
+           (wordError != MM_UTF8_EOF));
+
+  if ((currentLength > totalLength) &&
+      (MM_WM_FILE == wordMode) &&
+      (MM_TRUE == countCharsInFileMode) &&
+      (filePosition > 0))
+  {
+    // Wortzähler (Datei) korrigieren, das Wort das zum
+    // Abbruch geführt hat weil es 'nicht mehr reinpasst' soll
+    // beim nächsten Start wieder ausgegeben werden.
+    --filePosition;
+  }
 
   writeStringW(mainwin, "\n\r+");
   mmslMorseWord("+");
+  releaseWordFile();
   if (confirmWords == MM_TRUE)
   {
     writeStringW(mainwin, "   (");
@@ -1151,6 +1259,7 @@ void setConfigValuesToSystem(const MMConfig &config)
   fixedMorseFrequency = config.fixedMorseFrequency;
   mmslSetSmoothening(config.soundShaping);
   mmwlSetCountErrorsPerWord(config.errorsPerWord);
+  countCharsInFileMode = config.countCharsInFileMode;
   saveOptionsToIniFile = config.saveOptions;
 }
 
@@ -1182,6 +1291,7 @@ void setConfigValuesFromSystem(MMConfig &config)
   config.fixedMorseFrequency = fixedMorseFrequency;
   config.soundShaping = mmslGetSmoothening();
   config.errorsPerWord = mmwlGetCountErrorsPerWord();
+  config.countCharsInFileMode = countCharsInFileMode;
   config.saveOptions = saveOptionsToIniFile;
 }
 
@@ -1210,22 +1320,28 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  string homePath;
-  const char *v = getenv("HOME");
-  if( v != NULL ) 
-    homePath = string( v );
-  if (!homePath.empty())
-  {
-    configPath = homePath + "/.config/";
-    // Does this path actually exist?
-    struct stat sb;
-    if (stat(configPath.c_str(), &sb) != 0)
+  const char *c = getenv("MORSEMANN_CONFIG");
+  if( c != NULL ) 
+    configPath = string( c );
+  if (configPath.empty())
+  { 
+    string homePath;
+    const char *v = getenv("HOME");
+    if( v != NULL ) 
+      homePath = string( v );
+    if (!homePath.empty())
     {
-      // Else set config path to empty again
-      configPath = "";
+      configPath = homePath + MM_CONFIG_FOLDER;
+      // Does this path actually exist?
+      struct stat sb;
+      if (stat(configPath.c_str(), &sb) != 0)
+      {
+        // Else set config path to empty again
+        configPath = "";
+      }
     }
+    configPath += MM_CONFIG_FILE;
   }
-  configPath += "mmconfig.ini";
 
   if (argc > 2)
   {
