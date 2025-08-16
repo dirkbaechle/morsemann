@@ -13,10 +13,14 @@
 
 /*------------------------------------------------ Global variables */
 
+extern int utf8FileExists;
+extern int utf8FileContainsNoWords;
+
 /*------------------------------------------------------- Functions */
 
 extern void resetUtf8Parser();
 extern int utf8FileContainsWords();
+extern void rescanUtf8File();
 extern int openUtf8File(const std::string &fname = "");
 extern void closeUtf8File();
 extern int findExistingUtf8File(const std::string &fpath, std::string &respath);

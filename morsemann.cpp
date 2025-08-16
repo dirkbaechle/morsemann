@@ -505,6 +505,19 @@ void morseOptionsMenu(int akt)
       } else {
         writeString("Gesetzt");
       }
+      if (!utf8FileExists)
+      {
+        gotoxy(centerX+OPT_RIGHT_WIDTH-2, centerY+3);
+        writeString("!");
+      }
+      else
+      {
+        if (utf8FileContainsNoWords)
+        {
+          gotoxy(centerX+OPT_RIGHT_WIDTH-2, centerY+3);
+          writeString("~");
+        }
+      }
     } else {
       writeString("Nein");
     }
@@ -538,7 +551,11 @@ void morseOptionsSelection(void)
   keyChar b = '0';
   int currentOption = 1;
   string oldFileName = fileName;
+  int oldCharGroup = selectedCharGroup;
+  string oldCharSet = charSet;
 
+  if (wordMode == MM_WM_FILE)
+    rescanUtf8File();
   while (b != KEY_BACKSPACE)
   {
     morseOptionsMenu(currentOption);
@@ -614,6 +631,15 @@ void morseOptionsSelection(void)
         case 3: lengthSelection();
           break;
         case 4: charGroupSelection();
+                if ((selectedCharGroup != oldCharGroup) ||
+                    ((selectedCharGroup == CG_ENTERED_CHAR_SET) &&
+                     (oldCharSet != charSet)))
+                {
+                  oldCharSet = charSet;
+                  oldCharGroup = selectedCharGroup;
+                  if (MM_WM_FILE == wordMode)
+                    rescanUtf8File();
+                }
           break;
         case 5: confirmWords = 1 - confirmWords;
           break;
@@ -621,6 +647,8 @@ void morseOptionsSelection(void)
                   wordMode = MM_WM_RANDOM;
                 else
                   wordMode = 1 - wordMode;
+                if (MM_WM_FILE == wordMode)
+                  rescanUtf8File();
           break;
         case 7: if (wordMode == MM_WM_RANDOM)
                   variableWords = 1 - variableWords;
@@ -628,20 +656,24 @@ void morseOptionsSelection(void)
                   fileWordsRandom = 1 - fileWordsRandom;
           break;
         case 8: if (wordMode == MM_WM_FILE)
+                {
                   fileNameSelection();
+                  // Hat sich der Name der Datei geändert?
+                  if (fileName != oldFileName)
+                  {
+                    oldFileName = fileName;
+                    // Ja, also Wortzähler zurücksetzen
+                    filePosition = 0;
+                    rescanUtf8File();
+                  }
+                }
           break;
         default: fileWordsExtendedCharset = 1 - fileWordsExtendedCharset;
+                 rescanUtf8File();
           break;
       }
 
     }
-  }
-
-  // Hat sich der Name der Datei geändert?
-  if (fileName != oldFileName)
-  {
-    // Ja, also Wortzähler zurücksetzen
-    filePosition = 0;
   }
 }
 
@@ -951,15 +983,20 @@ void outputMorseCode(void)
 
   if (MM_WM_FILE == wordMode)
   {
-    if (findExistingUtf8File(fileName, filePath) == MM_FALSE)
+    rescanUtf8File();
+    if (utf8FileExists == MM_FALSE)
     {
-      writeSelection("Angegebene Datei nicht gefunden!",centerX-10, centerY-3, 1, 2);
+      writeSelection("Angegebene Datei nicht gefunden!",centerX-16, centerY-3, 1, 2);
+      writeSelection(fileName, centerX-fileName.size()/2, centerY-1, 1, 2);
+      writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY-4, 1, 2);
       getch();
       return;
     }
-    if (MM_FALSE == utf8FileContainsWords())
+    if (MM_TRUE == utf8FileContainsNoWords)
     {
-      writeSelection("Die Datei enthält keine Wörter!",centerX-10, centerY-3, 1, 2);
+      writeSelection("Die Datei enthält keine Wörter!",centerX-15, centerY-3, 1, 2);
+      writeSelection(fileName, centerX-fileName.size()/2, centerY-1, 1, 2);
+      writeSelection("<< Bitte eine Taste drücken >>", centerX-15, screenY-4, 1, 2);
       getch();
       return;
     }

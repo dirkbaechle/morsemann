@@ -41,6 +41,12 @@ using std::endl;
 
 // Stream auf die aktuelle UTF8 Datei
 std::ifstream file;
+// Nach einem Rescan der aktuell gesetzten UTF8 Datei (fileName) liefert
+// diese Variable (0=existiert nicht/1=existiert)
+int utf8FileExists = MM_FALSE;
+// Nach einem Rescan der aktuell gesetzten UTF8 Datei (fileName) liefert
+// diese Variable (0=keine Worte verfügbar/1=enthält Worte)
+int utf8FileContainsNoWords = MM_TRUE;
 // Der aktuelle Parsing-Modus innerhalb der Datei
 int utf8ParseMode = PM_VOID;
 // Das letzte gelesene UTF8 Token.
@@ -276,6 +282,28 @@ void closeUtf8File()
 {
   utf8ParseMode = PM_VOID;
   file.close();
+}
+
+/** Prüft ob die aktuelle UTF8-Datei (fileName) existiert
+ * und ob sie ausgebbare Worte enthält.
+*/
+void rescanUtf8File()
+{
+  if (findExistingUtf8File(fileName, filePath) == MM_FALSE)
+  {
+    utf8FileExists = MM_FALSE;
+    utf8FileContainsNoWords = MM_TRUE;
+    return;
+  }
+  utf8FileExists = MM_TRUE;
+  if (MM_TRUE == utf8FileContainsWords())
+  {
+    utf8FileContainsNoWords = MM_FALSE;
+  }
+  else
+  {
+    utf8FileContainsNoWords = MM_TRUE;
+  }
 }
 
 /** Hilfsfunktion die 'true' liefert falls das gegebene Token
