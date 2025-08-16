@@ -50,6 +50,7 @@ int MMConfig::readFromFile(const string &filepath)
   fixedMorseFrequency = reader.GetInteger("common", "fixedMorseFrequency", 800);
   soundShaping = reader.GetInteger("common", "soundShaping", 3);
   errorsPerWord = reader.GetInteger("common", "errorsPerWord", MM_TRUE);
+  countCharsInFileMode = reader.GetInteger("common", "countCharsInFileMode", MM_TRUE);
   saveOptions = reader.GetInteger("common", "saveOptions", MM_TRUE);
 
   return MM_TRUE;
@@ -104,6 +105,7 @@ void MMConfig::setDefaultValues()
   fixedMorseFrequency = 800;
   soundShaping = 3;
   errorsPerWord = MM_TRUE;
+  countCharsInFileMode = MM_TRUE;
   saveOptions = MM_TRUE;
 }
 
@@ -134,6 +136,7 @@ string MMConfig::toString()
   iniFile << "fixedMorseFrequency=" << fixedMorseFrequency << "\n";
   iniFile << "soundShaping=" << soundShaping << "\n";
   iniFile << "errorsPerWord=" << errorsPerWord << "\n";
+  iniFile << "countCharsInFileMode=" << countCharsInFileMode << "\n";
   iniFile << "saveOptions=" << saveOptions << "\n\n";
  
   return iniFile.str();

@@ -196,6 +196,7 @@ string getNextWord(int &error)
     }
     else
     {
+      ++filePosition;
       return readUtf8WordFromOpenFile(error);
     }
   }
@@ -228,16 +229,34 @@ void prepareWordFile()
 {
   if (MM_WM_FILE == wordMode)
   {
+    int error;
+    string word;
     if (MM_FALSE == fileWordsRandom)
     {
       openUtf8File();
+      if (filePosition > 0)
+      {
+        // try to fast-forward the file
+        unsigned long readWords = 0;
+
+        do
+        {
+          word = readUtf8WordFromOpenFile(error);
+          if (error == MM_UTF8_EOF)
+          {
+            filePosition = 0;
+            closeUtf8File();
+            openUtf8File();
+            break;
+          }
+          ++readWords;
+        } while (readWords < filePosition);
+      }
     }
     else
     {
       openUtf8File();
       randomWords.clear();
-      int error;
-      string word;
       do
       {
         word = readUtf8WordFromOpenFileVerbatim(error);

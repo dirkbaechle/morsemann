@@ -79,6 +79,8 @@ const int OPT_RIGHT_WIDTH = 8;
 const int MENU_WIDTH = 6;
 const int INFO_WIDTH = 20;
 
+const int MAX_FILENAME_LENGTH = 12;
+
 /*------------------------------------------------ Global variables */
 
 /** Gesamtzahl der zu gebenden Buchstaben */
@@ -89,6 +91,8 @@ int errorCount = 0;
 int selectMorseFrequencyRandomly = MM_TRUE;
 /** Tonhöhe in Hz falls die Tonhöhe fest gesetzt ist. */
 int fixedMorseFrequency = 800;
+/** Wird im Datei-Modus die gewählte Länge an Zeichen beachtet? (0=nein, 1=ja) */
+int countCharsInFileMode = MM_TRUE;
 /** Sollen die Optionen/Einstellungen in der INI Datei gespeichert
  * werden? (0=nein, 1=ja)
  */
@@ -495,7 +499,12 @@ void morseOptionsMenu(int akt)
     }
     gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+3);
     if (!fileName.empty()) {
-      writeString("Vorh.");
+      if (fileName.size() < MAX_FILENAME_LENGTH)
+      {
+        writeString(fileName);
+      } else {
+        writeString("Gesetzt");
+      }
     } else {
       writeString("Nein");
     }
@@ -528,6 +537,7 @@ void morseOptionsSelection(void)
 {
   keyChar b = '0';
   int currentOption = 1;
+  string oldFileName = fileName;
 
   while (b != KEY_BACKSPACE)
   {
@@ -625,6 +635,13 @@ void morseOptionsSelection(void)
       }
 
     }
+  }
+
+  // Hat sich der Name der Datei geändert?
+  if (fileName != oldFileName)
+  {
+    // Ja, also Wortzähler zurücksetzen
+    filePosition = 0;
   }
 }
 
@@ -733,22 +750,24 @@ void soundShapingSelection(void)
 void commonOptionsMenu(int akt)
 {
   clrscr();
-  writeSelection("*** Einstellungen ***", centerX-8, centerY-4, 1, 2);
+  writeSelection("*** Einstellungen ***", centerX-8, centerY-5, 1, 2);
 
-  writeSelection("Wahl der Tonhöhe", centerX-OPT_LEFT_WIDTH, centerY-2, 1, akt);
-  writeSelection("Feste Tonhöhe (in Hz):", centerX-OPT_LEFT_WIDTH, centerY-1, 2, akt);
-  writeSelection("Zeichen-Shaping:", centerX-OPT_LEFT_WIDTH, centerY, 3, akt);
-  writeSelection("Zähle Fehler pro:", centerX-OPT_LEFT_WIDTH, centerY+1, 4, akt);
-  writeSelection("Optionen speichern:", centerX-OPT_LEFT_WIDTH, centerY+2, 5, akt);
+  writeSelection("Wahl der Tonhöhe", centerX-OPT_LEFT_WIDTH, centerY-3, 1, akt);
+  writeSelection("Feste Tonhöhe (in Hz):", centerX-OPT_LEFT_WIDTH, centerY-2, 2, akt);
+  writeSelection("Zeichen-Shaping:", centerX-OPT_LEFT_WIDTH, centerY-1, 3, akt);
+  writeSelection("Zähle Fehler pro:", centerX-OPT_LEFT_WIDTH, centerY, 4, akt);
+  writeSelection("Zähle Zeichen (Datei):", centerX-OPT_LEFT_WIDTH, centerY+1, 5, akt);
+  writeSelection("Wortzähler (Datei):", centerX-OPT_LEFT_WIDTH, centerY+2, 6, akt);
+  writeSelection("Optionen speichern:", centerX-OPT_LEFT_WIDTH, centerY+3, 7, akt);
 
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-3);
   if (selectMorseFrequencyRandomly == MM_TRUE)
     writeString("zufällig");
   else
     writeString("fest");
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeNumber(fixedMorseFrequency);
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
   switch (mmslGetSmoothening()) {
     case 1:  writeString("x^3");
       break;
@@ -759,12 +778,19 @@ void commonOptionsMenu(int akt)
     default: writeString("Aus");
       break;
   }
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
   if (mmwlGetCountErrorsPerWord())
     writeString("Wort");
   else
     writeString("Buchstabe");
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
+  if (countCharsInFileMode == MM_FALSE)
+    writeString("Nein");
+  else
+    writeString("Ja");
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
+  writeNumber(filePosition);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+3);
   if (saveOptionsToIniFile == MM_FALSE)
     writeString("Nein");
   else
@@ -794,14 +820,14 @@ void commonOptionsSelection(void)
     /* Cursor hoch */
     if (b == KEY_UP)
     {
-      if (currentOption == 1) currentOption = 5;
+      if (currentOption == 1) currentOption = 7;
       else --currentOption;
     }
 
     /* Cursor runter */
     if (b == KEY_DOWN)
     {
-      if (currentOption == 5) currentOption = 1;
+      if (currentOption == 7) currentOption = 1;
       else ++currentOption;
     }
 
@@ -817,7 +843,11 @@ void commonOptionsSelection(void)
           break;
         case 4: mmwlSetCountErrorsPerWord(1 - mmwlGetCountErrorsPerWord());
           break;
-        case 5: saveOptionsToIniFile = 1 - saveOptionsToIniFile;
+        case 5: countCharsInFileMode = 1 - countCharsInFileMode;
+          break;
+        case 6: filePosition = 0;
+          break;
+        case 7: saveOptionsToIniFile = 1 - saveOptionsToIniFile;
           break;
       }
     }
@@ -1024,6 +1054,13 @@ void outputMorseCode(void)
 
     lastWord = getNextWord(wordError);
     currentLength += lastWord.size();
+    if ((MM_UTF8_EOF == wordError) &&
+        (MM_WM_FILE == wordMode) &&
+        (MM_FALSE == fileWordsRandom))
+    {
+      // Wortzähler zurücksetzen
+      filePosition = 0;
+    }
 
     // Passt das neue Wort noch in die aktuelle Zeile?
     if (((int) lastWord.size())+lineCount < (screenX-1))
@@ -1053,9 +1090,22 @@ void outputMorseCode(void)
       }
     }
 
-  } while ((currentLength <= totalLength) && 
+  } while (((currentLength <= totalLength) ||
+            ((MM_WM_FILE == wordMode) &&
+             (MM_FALSE == countCharsInFileMode))) && 
            (intent == MM_CONTINUE) && 
            (wordError != MM_UTF8_EOF));
+
+  if ((currentLength > totalLength) &&
+      (MM_WM_FILE == wordMode) &&
+      (MM_TRUE == countCharsInFileMode) &&
+      (filePosition > 0))
+  {
+    // Wortzähler (Datei) korrigieren, das Wort das zum
+    // Abbruch geführt hat weil es 'nicht mehr reinpasst' soll
+    // beim nächsten Start wieder ausgegeben werden.
+    --filePosition;
+  }
 
   writeStringW(mainwin, "\n\r+");
   mmslMorseWord("+");
@@ -1172,6 +1222,7 @@ void setConfigValuesToSystem(const MMConfig &config)
   fixedMorseFrequency = config.fixedMorseFrequency;
   mmslSetSmoothening(config.soundShaping);
   mmwlSetCountErrorsPerWord(config.errorsPerWord);
+  countCharsInFileMode = config.countCharsInFileMode;
   saveOptionsToIniFile = config.saveOptions;
 }
 
@@ -1203,6 +1254,7 @@ void setConfigValuesFromSystem(MMConfig &config)
   config.fixedMorseFrequency = fixedMorseFrequency;
   config.soundShaping = mmslGetSmoothening();
   config.errorsPerWord = mmwlGetCountErrorsPerWord();
+  config.countCharsInFileMode = countCharsInFileMode;
   config.saveOptions = saveOptionsToIniFile;
 }
 

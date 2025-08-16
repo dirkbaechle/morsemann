@@ -1,40 +1,11 @@
 # Morsemann
 Ein Programm für das Lernen und Üben des Hörens von Morsezeichen (CW)
 
-Copyright (C) 2003-2024 by Dirk Bächle (dl9obn@darc.de)
+Copyright (C) 2003-2025 by Dirk Bächle (dl9obn@darc.de)
 
 https://github.com/dirkbaechle/morsemann
 
-
-## Disclaimer
-
-```
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public
-License along with this program; if not, write to the 
-
-Free Software Foundation, Inc.
-675 Mass Ave
-Cambridge
-MA 02139
-USA
-```
-
-(siehe auch die Datei "COPYING")
-
-
-## Kompilieren des Programmes
-
-### Linux
+## Kompilieren des Programmes (Linux)
 
 Wechseln sie in das erzeugte Verzeichnis `morsemann`.
 
@@ -45,59 +16,7 @@ make
 ```
 
 ein. Nach kurzer Zeit sollte der Kompilier-Vorgang stoppen und eine
-ausführbare Datei namens `morsemann` erzeugt haben. Denken Sie bitte
-daran, dass sie Root-Rechte brauchen um den "Morsemann" zu starten
-(nicht für das Kompilieren!).
-Wechseln Sie also vor dem Start des Programmes mit
-
-```
-su
-```
-
-in den Superuser-Modus. 
-Falls man nicht immer wieder `su' und das Passwort eingeben
-möchte, kann man für die Datei `morsemann' auch das entsprechende
-Ausführungs-Bit setzen. Dazu wechselt man in den Superuser-Modus und
-ruft:
-
-```
-make allusers
-```
-
-auf. Anschliessend kann man den "Morsemann" als normaler Benutzer/User
-starten (er wird aber im Root-Modus ausgeführt)...
-
-
-Beschwert sich `make' darüber, dass es den Kompiler `gcc' nicht finden
-konnte, so haben Sie zwei Möglichkeiten: 
-
-1. Den `g++` installieren.
-2. Sie editieren das `Makefile` und setzen die Variable `CXX` auf den
-C++-Kompiler, der in Ihrer Linux-Distribution installiert ist.
-
-Falls der Linker die Library `ncurses` nicht finden kann, so haben Sie
-diese wahrscheinlich nicht installiert. Erneut haben Sie zwei Optionen:
-
-1. `ncurses` nachträglich installieren.
-2. Sie kompilieren den "Morsemann" mit dem Aufruf
-
-```
-make curses
-```
-
-      oder, falls sich der Kompiler immer noch beschwert, ohne Farben mit
-```
-make nocolor
-```
-
-## Quellcode-Dokumentation
-
-Der Quellcode (zumindest der in `morsemann.cpp`) ist mit speziellen
-C-Kommentaren versehen. 
-Mit dem Programm "Doxygen" (http://www.stack.nl/~dimitri/doxygen) kann
-bei Bedarf leicht eine Dokumentation in HTML oder LaTeX erstellt
-werden. Lesen Sie bitte zu diesem Zweck die Anleitung von "Doxygen".
-
+ausführbare Datei namens `morsemann` erzeugt haben.
 ## Credits
 
 Die Dateien `beep.h`, `beepLinux.c` und `alarm.[ch]` wurden 

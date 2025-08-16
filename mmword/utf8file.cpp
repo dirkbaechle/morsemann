@@ -160,6 +160,8 @@ void resetUtf8Parser()
  */
 int findExistingUtf8File(const string &fpath, string &respath)
 {
+  // reset path completely
+  respath = "";
   // try to find file locally first
   struct stat sb;
   if (stat(fpath.c_str(), &sb) != 0)
@@ -209,9 +211,15 @@ int utf8FileContainsWords()
   if (MM_TRUE == openUtf8File())
   {
     int error;
-    string word = readUtf8Word(file, error);
+    string word;
+    do
+    {
+      word = readUtf8Word(file, error);
+    } while ((error != MM_UTF8_EOF) && 
+             ((error != MM_UTF8_WORD) ||
+              (word.size() == 0)));
     closeUtf8File();
-    if ((error == MM_UTF8_WORD) && (word.size() > 0))
+    if (word.size() > 0)
     {
       return MM_TRUE;
     }
