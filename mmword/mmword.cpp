@@ -47,6 +47,8 @@ string groupString[8] = {"Alle Zeichen",
 int wordMode = MM_WM_RANDOM;
 /** Name der aktuellen Datei, aus der neue Wörter entnommen werden sollen. */
 string fileName;
+/** Der volle (aufgelöste) Pfad auf die aktuelle Datei, aus der neue Wörter entnommen werden sollen. */
+string filePath;
 /** Enthält die Datei einzelne Worte pro Zeile, die zufällig ausgegeben werden
  * sollen, oder ist es ein Text der zusammenhängend gegeben wird (0=nein/text, 1=ja/zufällig)?
  */

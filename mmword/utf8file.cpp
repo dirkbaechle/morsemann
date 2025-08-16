@@ -2,10 +2,12 @@
 /*-------------------------------------------------------- Includes */
 
 #include "utf8file.h"
+#include "global.h"
 #include "mmword.h"
 
 #include <iostream>
 #include <fstream>
+#include "sys/stat.h"
 
 using std::string;
 using std::cout;
@@ -151,6 +153,48 @@ void resetUtf8Parser()
   utf8LastToken = "";
 }
 
+/** Sucht im lokalen Verzeichnis (Arbeitsverzeichnis) nach
+ * der Datei 'fpath'. Wird die Datei dort nicht gefunden, wird
+ * die Suche in den Resource-Ordnern fortgesetzt.
+ * Liefert '1' falls die Datei existiert, mit dem vollen Pfad der Datei in 'respath'
+ */
+int findExistingUtf8File(const string &fpath, string &respath)
+{
+  // try to find file locally first
+  struct stat sb;
+  if (stat(fpath.c_str(), &sb) != 0)
+  {
+    // file not found, continue to look in resources folder
+    const char *c = getenv("MORSEMANN_RESOURCES");
+    if (c != NULL) 
+      respath = string(c);
+    if (respath.empty())
+    { 
+      string homePath;
+      const char *v = getenv("HOME");
+      if (v != NULL) 
+        homePath = string(v);
+      if (!homePath.empty())
+      {
+        respath = homePath + MM_RESOURCES_FOLDER;
+      }
+    }
+
+    respath += fpath;
+    // Does this path actually exist?
+    struct stat sb;
+    if (stat(respath.c_str(), &sb) == 0)
+    {
+      return MM_TRUE;
+    }
+    respath = "";
+    return MM_FALSE;
+  }
+
+  respath = fpath;
+  return MM_TRUE;
+}
+
 /** Liefert 'true' (1 == MM_TRUE) wenn die UTF8 Datei nicht
  * leer ist, also ausgebbare Worte enthält,
  * sonst 'false' (0 == MM_FALSE).
@@ -181,20 +225,39 @@ int utf8FileContainsWords()
  */
 int utf8FileIsOpen()
 {
-  if (!file) {
+  if (!file)
+  {
     return MM_FALSE;
   }
   return MM_TRUE;
 }
 
-/** Öffnet die UTF8 Datei und bereitet sie dadurch
+/** Öffnet die ausgewählte UTF8 Datei und bereitet sie dadurch
  * für das Lesen von Worten vor.
+ * Ist der Dateiname (fname) leer, so wird die intern gesetzte
+ * Variable 'fileName' benutzt.
  */
-int openUtf8File()
+int openUtf8File(const string &fname)
 {
   utf8ParseMode = PM_VOID;
-  file.open(fileName, std::ios::binary);
-  if (!file) {
+  if (fname.empty())
+  {
+    // resolve full path
+    if (findExistingUtf8File(fileName, filePath) == MM_TRUE)
+    {
+      file.open(filePath, std::ios::binary);
+    }
+    else
+    {
+      return MM_FALSE;
+    }
+  }
+  else
+  {
+    file.open(fname, std::ios::binary);
+  }
+  if (!file)
+  {
     return MM_FALSE;
   }
   return MM_TRUE;
@@ -878,10 +941,9 @@ void parseUtf8FileToStream(std::istream &stream,
 /** Gibt die Datei mit ihren erkannten/geparsten Worten
  * auf die Standardausgabe aus.
  */
-void parseUtf8FileToStdout(const string &filePath)
+void parseUtf8FileToStdout(const string &fullPath)
 {
-  fileName = filePath;
-  if (openUtf8File() == MM_FALSE)
+  if (openUtf8File(fullPath) == MM_FALSE)
     return;
 
   parseUtf8FileToStream(file, cout);

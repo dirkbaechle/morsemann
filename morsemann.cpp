@@ -444,16 +444,16 @@ void morseOptionsMenu(int akt)
   writeSelection("Geschwindigkeit (in BpM):", centerX-OPT_LEFT_WIDTH, centerY-4, 1, akt);
   writeSelection("Pausenfaktor:", centerX-OPT_LEFT_WIDTH, centerY-3, 2, akt);
   writeSelection("Zeichenanzahl:", centerX-OPT_LEFT_WIDTH, centerY-2, 3, akt);
-  writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY-1, 4, akt);
-  writeSelection("Worte erzeugen:", centerX-OPT_LEFT_WIDTH, centerY, 5, akt);
+  writeSelection("Zeichen:", centerX-OPT_LEFT_WIDTH, centerY-1, 4, akt);
+  writeSelection("Zeichen bestätigen:", centerX-OPT_LEFT_WIDTH, centerY, 5, akt);
+  writeSelection("Worte erzeugen:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
 
   if (wordMode == MM_WM_RANDOM) {
-    writeSelection("Zeichen:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
     writeSelection("Feste Wortgruppen:", centerX-OPT_LEFT_WIDTH, centerY+2, 7, akt);
   } else if (wordMode == MM_WM_FILE) {
-    writeSelection("Dateiname:", centerX-OPT_LEFT_WIDTH, centerY+1, 6, akt);
     writeSelection("Dateimodus:", centerX-OPT_LEFT_WIDTH, centerY+2, 7, akt);
-    writeSelection("Alle Zeichen geben:", centerX-OPT_LEFT_WIDTH, centerY+3, 8, akt);
+    writeSelection("Dateiname:", centerX-OPT_LEFT_WIDTH, centerY+3, 8, akt);
+    writeSelection("Alle Zeichen geben:", centerX-OPT_LEFT_WIDTH, centerY+4, 9, akt);
   }
 
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-4);
@@ -463,6 +463,8 @@ void morseOptionsMenu(int akt)
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-2);
   writeNumberULong(totalLength);
   gotoxy(centerX+OPT_RIGHT_WIDTH, centerY-1);
+  writeString(groupString[selectedCharGroup - 1]);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
   switch (confirmWords)
   {
     case 0: writeString("Nein");
@@ -471,11 +473,9 @@ void morseOptionsMenu(int akt)
             break;
   }
 
-  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY);
+  gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
   if (wordMode == MM_WM_RANDOM) {
     writeString("Zufällig");
-    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
-    writeString(groupString[selectedCharGroup - 1]);
     gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
     if (variableWords == MM_FALSE)
     {
@@ -487,12 +487,6 @@ void morseOptionsMenu(int akt)
       writeString("Nein (3-8)");
   } else if (wordMode == MM_WM_FILE) {
     writeString("Aus Datei");
-    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+1);
-    if (!fileName.empty()) {
-      writeString("Vorh.");
-    } else {
-      writeString("Nein");
-    }
     gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+2);
     if (fileWordsRandom) {
       writeString("Worte");
@@ -500,6 +494,12 @@ void morseOptionsMenu(int akt)
       writeString("Text");
     }
     gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+3);
+    if (!fileName.empty()) {
+      writeString("Vorh.");
+    } else {
+      writeString("Nein");
+    }
+    gotoxy(centerX+OPT_RIGHT_WIDTH, centerY+4);
     if (fileWordsExtendedCharset) {
       writeString("Ja");
     } else {
@@ -541,9 +541,9 @@ void morseOptionsSelection(void)
         if (wordMode == MM_WM_RANDOM)
           currentOption = 7;
         else if (wordMode == MM_WM_FILE)
-          currentOption = 8;
+          currentOption = 9;
         else
-          currentOption = 5;
+          currentOption = 6;
       }
       else --currentOption;
     }
@@ -555,10 +555,10 @@ void morseOptionsSelection(void)
         if (currentOption == 7) currentOption = 1;
         else ++currentOption;
       } else if (wordMode == MM_WM_FILE) {
-        if (currentOption == 8) currentOption = 1;
+        if (currentOption == 9) currentOption = 1;
         else ++currentOption;
       } else {
-        if (currentOption == 5) currentOption = 1;
+        if (currentOption == 6) currentOption = 1;
         else ++currentOption;
       }
     }
@@ -603,22 +603,22 @@ void morseOptionsSelection(void)
           break;
         case 3: lengthSelection();
           break;
-        case 4: confirmWords = 1 - confirmWords;
+        case 4: charGroupSelection();
           break;
-        case 5: if (wordMode == MM_WM_PARIS)
+        case 5: confirmWords = 1 - confirmWords;
+          break;
+        case 6: if (wordMode == MM_WM_PARIS)
                   wordMode = MM_WM_RANDOM;
                 else
                   wordMode = 1 - wordMode;
-          break;
-        case 6: if (wordMode == MM_WM_RANDOM)
-                  charGroupSelection();
-                else if (wordMode == MM_WM_FILE)
-                  fileNameSelection();
           break;
         case 7: if (wordMode == MM_WM_RANDOM)
                   variableWords = 1 - variableWords;
                 else if (wordMode == MM_WM_FILE)
                   fileWordsRandom = 1 - fileWordsRandom;
+          break;
+        case 8: if (wordMode == MM_WM_FILE)
+                  fileNameSelection();
           break;
         default: fileWordsExtendedCharset = 1 - fileWordsExtendedCharset;
           break;
@@ -921,10 +921,15 @@ void outputMorseCode(void)
 
   if (MM_WM_FILE == wordMode)
   {
+    if (findExistingUtf8File(fileName, filePath) == MM_FALSE)
+    {
+      writeSelection("Angegebene Datei nicht gefunden!",centerX-10, centerY-3, 1, 2);
+      getch();
+      return;
+    }
     if (MM_FALSE == utf8FileContainsWords())
     {
-      
-      writeSelection("Given file is empty!",centerX-10, centerY-3, 1, 2);
+      writeSelection("Die Datei enthält keine Wörter!",centerX-10, centerY-3, 1, 2);
       getch();
       return;
     }
@@ -1226,22 +1231,28 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  string homePath;
-  const char *v = getenv("HOME");
-  if( v != NULL ) 
-    homePath = string( v );
-  if (!homePath.empty())
-  {
-    configPath = homePath + "/.config/";
-    // Does this path actually exist?
-    struct stat sb;
-    if (stat(configPath.c_str(), &sb) != 0)
+  const char *c = getenv("MORSEMANN_CONFIG");
+  if( c != NULL ) 
+    configPath = string( c );
+  if (configPath.empty())
+  { 
+    string homePath;
+    const char *v = getenv("HOME");
+    if( v != NULL ) 
+      homePath = string( v );
+    if (!homePath.empty())
     {
-      // Else set config path to empty again
-      configPath = "";
+      configPath = homePath + MM_CONFIG_FOLDER;
+      // Does this path actually exist?
+      struct stat sb;
+      if (stat(configPath.c_str(), &sb) != 0)
+      {
+        // Else set config path to empty again
+        configPath = "";
+      }
     }
+    configPath += MM_CONFIG_FILE;
   }
-  configPath += "mmconfig.ini";
 
   if (argc > 2)
   {

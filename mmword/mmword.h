@@ -25,6 +25,7 @@ extern std::string groupString[8];
 
 extern int wordMode;
 extern std::string fileName;
+extern std::string filePath;
 extern int fileWordsRandom;
 extern unsigned long int filePosition;
 extern int fileWordsExtendedCharset;

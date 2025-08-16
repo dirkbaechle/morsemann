@@ -37,6 +37,10 @@
 #define CG_DIGITS_AND_PUNCT 7
 #define CG_ENTERED_CHAR_SET 8
 
+#define MM_CONFIG_FOLDER "/.config/"
+#define MM_CONFIG_FILE "mmconfig.ini"
+#define MM_RESOURCES_FOLDER "/.config/morsemann/"
+
 /*-------------------------------------------------------- Typedefs */
 
 typedef unsigned int keyChar;
