@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>  
+#include <cstring>
 
 #include <unistd.h>
 
@@ -221,18 +222,33 @@ void textModusErrorW(WINDOW *curwin)
 #endif
 }
 
+/** Interne Hilfsfunktion: ESC-Sequenz direkt senden
+*/
+void sendEscapeSequence(const char* seq) 
+{
+  write(STDOUT_FILENO, seq, strlen(seq));
+}
+
 /** Versteckt den Text-Cursor.
 */
 void hideCursor(void)
 {
-  curs_set(0);
+  if (ERR == curs_set(0))
+  {
+    // Fallback über VT100-Sequenz
+    sendEscapeSequence("\033[?25l");
+  }
 }
 
 /** Zeigt den Text-Cursor.
 */
 void showCursor(void)
 {
-  curs_set(1);
+  if (ERR == curs_set(1))
+  {
+    // Fallback über VT100-Sequenz
+    sendEscapeSequence("\033[?25h");
+  }
 }
 
 /** Schreibt einen String an die übergebene Position. Stimmt
