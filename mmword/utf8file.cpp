@@ -332,6 +332,7 @@ int utf8CharLength(unsigned char firstByte) {
 string readUtf8Char(std::istream &stream,
                     int &error)
 {
+  stream.peek();
   while (!stream.eof()) {
     unsigned char firstByte;
     stream.read(reinterpret_cast<char*>(&firstByte), 1);
@@ -342,22 +343,39 @@ string readUtf8Char(std::istream &stream,
       return "";
     }
 
-    if ((charLen > 1) && (stream.eof()))
-      break;
-
     std::string utf8Char(1, firstByte);
-    for (int i = 1; i < charLen; ++i) {
-      unsigned char nextByte;
-      stream.read(reinterpret_cast<char*>(&nextByte), 1);
-      if (stream.eof() || (nextByte & 0xC0) != 0x80) {
-        error = MM_UTF8_INVALID_CONTBYTE;
-        return "";
+    if (charLen > 1)
+    {
+      stream.peek();
+      if (!stream.eof())
+      {
+        for (int i = 1; i < charLen; ++i)
+        {
+          unsigned char nextByte;
+          stream.read(reinterpret_cast<char*>(&nextByte), 1);
+          if (stream.gcount() == 0)
+          {
+            // hit EOF
+            break;
+          }
+          if ((nextByte & 0xC0) != 0x80)
+          {
+            error = MM_UTF8_INVALID_CONTBYTE;
+            return "";
+          }
+          utf8Char += static_cast<char>(nextByte);
+        }
+        error = MM_UTF8_CHAR;
+        return utf8Char;
       }
-      utf8Char += static_cast<char>(nextByte);
     }
-  
-    error = MM_UTF8_CHAR;
-    return utf8Char;
+    else
+    {
+      // single byte-char read
+      error = MM_UTF8_CHAR;
+      return utf8Char;
+    }
+    stream.peek();
   }
 
   error = MM_UTF8_EOF;
@@ -452,13 +470,6 @@ string getUtf8Token(std::istream &stream,
                     int &type,
                     int &error)
 {
-  if (stream.eof())
-  {
-    type = TT_NONE;
-    error = MM_UTF8_EOF;
-    return "";
-  }
-
   string word;
   int charError;
   string utf8Char = readUtf8Char(stream, charError);
@@ -595,17 +606,11 @@ string getUtf8Token(std::istream &stream,
 string readUtf8Word(std::istream &stream,
                     int &error)
 {
-  if (stream.eof())
-  {
-    error = MM_UTF8_EOF;
-    return "";
-  }
-
   string word;
   string utf8Token;
   int tokenType;
   int tokenError;
-  while (!stream.eof()) 
+  while (1) 
   {
     utf8Token = getUtf8Token(stream, tokenType, tokenError);
 #ifdef DEBUG_PARSER    
@@ -827,6 +832,10 @@ string readUtf8Word(std::istream &stream,
         utf8ParseMode = PM_SPACE;
       }
     }
+    else if (MM_UTF8_EOF == tokenError)
+    {
+      break;
+    }
   }
 
   if (!word.empty())
@@ -856,18 +865,12 @@ string readUtf8WordFromOpenFile(int &error)
 string readUtf8WordVerbatim(std::istream &stream,
                             int &error)
 {
-  if (stream.eof())
-  {
-    error = MM_UTF8_EOF;
-    return "";
-  }
-
   string word;
   string utf8Token;
   int tokenType;
   int tokenError;
   utf8LastToken = "";
-  while (!stream.eof()) 
+  while (1) 
   {
     utf8Token = getUtf8Token(stream, tokenType, tokenError);
     if (tokenError == MM_UTF8_WORD)
@@ -906,6 +909,10 @@ string readUtf8WordVerbatim(std::istream &stream,
         // Behandeln als Leerzeichen
         utf8ParseMode = PM_SPACE;
       }
+    }
+    else if (MM_UTF8_EOF == tokenError)
+    {
+      break;
     }
   }
 
