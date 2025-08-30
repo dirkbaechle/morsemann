@@ -1051,7 +1051,7 @@ void outputMorseCode(void)
       } while ((action == MM_REPEAT) && (intent == MM_CONTINUE));
       wmove(mainwin, posY, posX);
       errors = compareStrings(userWord, lastWord);
-      if (errors > 0)
+      if ((errors > 0) && (intent == MM_CONTINUE))
       {
         errorCount += errors;
         textModusErrorW(mainwin);
