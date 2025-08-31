@@ -59,6 +59,7 @@ von Morsezeichen (CW).
 #include <time.h>
 #include <signal.h>
 #include <string.h>
+#include <getopt.h>
 #include "sys/stat.h"
 
 using std::map;
@@ -1297,6 +1298,18 @@ void setConfigValuesFromSystem(MMConfig &config)
   config.saveOptions = saveOptionsToIniFile;
 }
 
+void printHelp()
+{
+    std::cout <<
+            "Morsemann, " << programVersion << ", Dirk Baechle <dl9obn@darc.de>\n"
+            "\n"
+            "-c, --config <Dateipfad>:       Pfad auf Konfig-Datei setzen\n"
+            "-d, --dump-config:              Default-Konfiguration ausgeben\n"
+            "-p, --parse-file <Dateipfad>:   Datei parsen und auf Bildschirm ausgeben\n"
+            "-h, --help:                     Diese Hilfe zu den Optionen anzeigen\n";
+    exit(1);
+}
+
 /** Beendet den ``ncurses''-Modus.
 */
 static void finish(int /* sig */)
@@ -1313,13 +1326,44 @@ static void finish(int /* sig */)
 */
 int main(int argc, char *argv[])
 {
-  if ((argc > 1) &&
-      ((strcmp(argv[1], "-d") == 0) || 
-       (strcmp(argv[1], "--dump-config") == 0)))
+  // define available command line options
+  const char* const short_opts = "c:dp:h";
+  const option long_opts[] = {
+          {"config", required_argument, nullptr, 'c'},
+          {"dump-config", no_argument, nullptr, 'd'},
+          {"parse-file", required_argument, nullptr, 'p'},
+          {"help", no_argument, nullptr, 'h'},
+          {nullptr, no_argument, nullptr, 0}
+  };
+
+  // process CLOs
+  string cliConfigPath;
+  string cliParseFile;
+  MMConfig cliConfig;
+  while (true)
   {
-    MMConfig c;
-    cout << c.toString() << endl;
-    return 0;
+    const auto opt = getopt_long(argc, argv, short_opts, long_opts, nullptr);
+
+    if (-1 == opt)
+      break;
+
+    switch (opt)
+    {
+      case 'c':
+        cliConfigPath = std::string(optarg);
+        break;
+      case 'd':
+        cout << cliConfig.toString() << endl;
+        return 0;
+      case 'p':
+        cliParseFile = std::string(optarg);
+        break;
+      case 'h': // -h or --help
+      case '?': // Unrecognized option
+      default:
+        printHelp();
+        break;
+    }
   }
 
   const char *c = getenv("MORSEMANN_CONFIG");
@@ -1345,27 +1389,19 @@ int main(int argc, char *argv[])
     configPath += MM_CONFIG_FILE;
   }
 
-  if (argc > 2)
+  if (!cliConfigPath.empty())
   {
-    if (((strcmp(argv[1], "-c") == 0) || 
-         (strcmp(argv[1], "--config") == 0)))
-    {
-      configPath = argv[2];
-    }
+    configPath = cliConfigPath;
   }
 
   config.readFromFile(configPath);
   initialConfig = config;
   setConfigValuesToSystem(config);
  
-  if (argc > 2)
+  if (!cliParseFile.empty())
   {
-    if (((strcmp(argv[1], "-p") == 0) || 
-         (strcmp(argv[1], "--parse-file") == 0)))
-    {
-      parseUtf8FileToStdout(string(argv[2]));
-      return 0;
-    }
+    parseUtf8FileToStdout(cliParseFile);
+    return 0;
   }
 
   if (!mmslInitSoundSystem(MMSL_ALSA))

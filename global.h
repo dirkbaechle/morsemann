@@ -41,6 +41,8 @@
 #define MM_CONFIG_FILE "mmconfig.ini"
 #define MM_RESOURCES_FOLDER "/.config/morsemann/"
 
+#define programVersion "v1.4"
+
 /*-------------------------------------------------------- Typedefs */
 
 typedef unsigned int keyChar;
