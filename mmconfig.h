@@ -65,6 +65,8 @@ struct MMConfig
     int saveOptions;
 
     MMConfig();
+    friend bool operator==(const MMConfig& lhs, const MMConfig& rhs);
+    friend bool operator!=(const MMConfig& lhs, const MMConfig& rhs);
     int readFromFile(const std::string &filepath);
     int writeFile(const std::string &filepath);
     void setDefaultValues();

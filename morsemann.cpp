@@ -1,7 +1,7 @@
 /* Morsemann - Ein kleines Programm zum Lernen und Üben des
 *              Hörens von Morsezeichen (CW).
 *
-* Copyright (C) 2003-2024 by Dirk Baechle (dl9obn@darc.de)
+* Copyright (C) 2003-2025 by Dirk Baechle (dl9obn@darc.de)
 *
 * https://github.com/dirkbaechle/morsemann
 *
@@ -99,6 +99,7 @@ int countCharsInFileMode = MM_TRUE;
 int saveOptionsToIniFile = MM_TRUE;
 
 MMConfig config;
+MMConfig initialConfig;
 string configPath;
 
 /*--------------------------------------------------- Functions */
@@ -893,6 +894,7 @@ void commonOptionsSelection(void)
     savedConfig.readFromFile(configPath);
     savedConfig.saveOptions = saveOptionsToIniFile;
     savedConfig.writeFile(configPath);
+    initialConfig = savedConfig;
   }
 }
 
@@ -1353,6 +1355,7 @@ int main(int argc, char *argv[])
   }
 
   config.readFromFile(configPath);
+  initialConfig = config;
   setConfigValuesToSystem(config);
  
   if (argc > 2)
@@ -1408,7 +1411,10 @@ int main(int argc, char *argv[])
   if (config.saveOptions == MM_TRUE)
   {
     setConfigValuesFromSystem(config);
-    config.writeFile(configPath);
+    if (config != initialConfig)
+    {
+      config.writeFile(configPath);
+    }
   }
 
   confirmWords = 0;

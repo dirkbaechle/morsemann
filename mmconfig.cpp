@@ -141,3 +141,54 @@ string MMConfig::toString()
  
   return iniFile.str();
 }
+
+bool operator==(const MMConfig& lhs, const MMConfig& rhs)
+{
+  if (lhs.randomFrequency != rhs.randomFrequency)
+    return false;
+  if (lhs.speed != rhs.speed)
+    return false;
+  if (lhs.farnsworthFactor != rhs.farnsworthFactor)
+    return false;
+  if (lhs.totalLength != rhs.totalLength)
+    return false;
+  if (lhs.confirmWords != rhs.confirmWords)
+    return false;
+  if (lhs.wordMode != rhs.wordMode)
+    return false;
+  if (lhs.charGroup != rhs.charGroup)
+    return false;
+  if (lhs.charSet != rhs.charSet)
+    return false;
+  if (lhs.variableWordLength != rhs.variableWordLength)
+    return false;
+  if (lhs.fixedWordLength != rhs.fixedWordLength)
+    return false;
+  if (lhs.fileName != rhs.fileName)
+    return false;
+  if (lhs.fileModeWords != rhs.fileModeWords)
+    return false;
+  if (lhs.filePosition != rhs.filePosition)
+    return false;
+  if (lhs.fileUseAllChars != rhs.fileUseAllChars)
+    return false;
+  if (lhs.randomFrequency != rhs.randomFrequency)
+    return false;
+  if (lhs.fixedMorseFrequency != rhs.fixedMorseFrequency)
+    return false;
+  if (lhs.soundShaping != rhs.soundShaping)
+    return false;
+  if (lhs.errorsPerWord != rhs.errorsPerWord)
+    return false;
+  if (lhs.countCharsInFileMode != rhs.countCharsInFileMode)
+    return false;
+  if (lhs.saveOptions != rhs.saveOptions)
+    return false;
+
+  return true;
+}
+
+bool operator!=(const MMConfig& lhs, const MMConfig& rhs)
+{
+  return !(lhs == rhs);
+}
