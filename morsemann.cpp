@@ -445,7 +445,7 @@ void fileNameSelection(void)
 void morseOptionsMenu(int akt)
 {
   clrscr();
-  writeSelection("*** Optionen ***", centerX-8, centerY-6, 1, 2);
+  writeSelection("*** Morsezeichen ***", centerX-10, centerY-6, 1, 2);
 
   writeSelection("Geschwindigkeit (in BpM):", centerX-OPT_LEFT_WIDTH, centerY-4, 1, akt);
   writeSelection("Pausenfaktor:", centerX-OPT_LEFT_WIDTH, centerY-3, 2, akt);
