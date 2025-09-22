@@ -16,7 +16,9 @@ make
 ```
 
 ein. Nach kurzer Zeit sollte der Kompilier-Vorgang stoppen und eine
-ausführbare Datei namens `morsemann` erzeugt haben.
+ausführbare Datei namens `morsemann` erzeugt haben. Hierfür müssen
+im System `make`, der C++-Compiler `g++`, sowie die Pakete `ncurses-dev`
+und `alsa-dev` (bzw. `libasound2-dev`) installiert sein.
 
 ## Credits
 
