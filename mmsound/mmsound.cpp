@@ -25,6 +25,8 @@ static unsigned int mmslDotLength = 100;
 unsigned int mmslDelayFactor = 1;
 /** Länge der Rampe für das Formen (Smoothing) der Morsezeichen in ms */
 unsigned long int rampLength = 2;
+/** Aufteilung/Position der Smoothing-Rampe (0 = hartes Timing, 1 = überhängend/Tiefpass) */
+static int rampStrategy = 1;
 /** Frequenz für die Ausgabe der Morsezeichen. */
 static unsigned int mmslFrequency = 800;
 /** Gewählte Funktion für das Formen (Smoothing) der Morsezeichen (0-2) */
@@ -223,16 +225,39 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
                 x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
                 g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
               }
-              // Normal data
-              for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+              if (rampStrategy == 1)
               {
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                // Simulation eines Tiefpass-Verhaltens (ausklingendes Smoothing
+                // setzt erst nach dem Ende des Zeichens ein...
+
+                // Normal data
+                for (; currentSample < (endOfChar + toGo); ++currentSample)
+                {
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                }
+                // Smoothen OUT
+                for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
+                {
+                  x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
+                }
               }
-              // Smoothen OUT
-              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              else
               {
-                x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
+                // Ein- und ausklingendes Smoothing befinden sich komplett
+                // "innerhalb" des Zeichens...
+
+                // Normal data
+                for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+                {
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                }
+                // Smoothen OUT
+                for (; currentSample < (endOfChar + toGo); ++currentSample)
+                {
+                  x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
+                }
               }
               break;
       case 2: // Smoothen with f(x) = 6x^5 - 15x^4 + 10x^3
@@ -242,16 +267,39 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
                 x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
                 g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
               }
-              // Normal data
-              for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+              if (rampStrategy == 1)
               {
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                // Simulation eines Tiefpass-Verhaltens (ausklingendes Smoothing
+                // setzt erst nach dem Ende des Zeichens ein...
+
+                // Normal data
+                for (; currentSample < (endOfChar + toGo); ++currentSample)
+                {
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                }
+                // Smoothen OUT
+                for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
+                {
+                  x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
+                }
               }
-              // Smoothen OUT
-              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              else
               {
-                x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
+                // Ein- und ausklingendes Smoothing befinden sich komplett
+                // "innerhalb" des Zeichens...
+
+                // Normal data
+                for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+                {
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                }
+                // Smoothen OUT
+                for (; currentSample < (endOfChar + toGo); ++currentSample)
+                {
+                  x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
+                }
               }
               break;
       case 3: // Smoothen with f(x) = sin(PI/2*x)^2
@@ -261,16 +309,39 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
                 x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
                 g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
               }
-              // Normal data
-              for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+              if (rampStrategy == 1)
               {
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                // Simulation eines Tiefpass-Verhaltens (ausklingendes Smoothing
+                // setzt erst nach dem Ende des Zeichens ein...
+
+                // Normal data
+                for (; currentSample < (endOfChar + toGo); ++currentSample)
+                {
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                }
+                // Smoothen OUT
+                for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
+                {
+                  x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+                }
               }
-              // Smoothen OUT
-              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              else
               {
-                x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+                // Ein- und ausklingendes Smoothing befinden sich komplett
+                // "innerhalb" des Zeichens...
+
+                // Normal data
+                for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+                {
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                }
+                // Smoothen OUT
+                for (; currentSample < (endOfChar + toGo); ++currentSample)
+                {
+                  x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+                }
               }
               break;
       default: // No smoothing at all
@@ -282,7 +353,14 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
     }
     endOfChar += toGo;
     // add a pause
-    endOfChar += ditSamples;
+    if (rampStrategy == 1)
+    {
+      endOfChar += ditSamples - smoothSamples;
+    }
+    else
+    {
+      endOfChar += ditSamples;
+    }
   }
 
   return endOfChar;
@@ -628,9 +706,15 @@ int mmslMorseWord(const string &msg)
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
       // Maximale Länge des gesamten Wortes bei aktueller BpM Geschwindigkeit in Dots...
-      unsigned long int elements = (slen * MAX_CHAR_ELEMENTS * 4) + (slen - 1) * 2;
+      unsigned long int elements = (slen * MAX_CHAR_ELEMENTS * 4) + (slen - 1) * 2 +
+                                   (mmslDelayFactor - 1) * 3;
       // ...und in Samples.
-      unsigned long int wordDuration = durationToSamples(elements * mmslDotLength);
+      unsigned int durationMs = elements * mmslDotLength;
+      if (rampStrategy == 1)
+      {
+        durationMs += rampLength;
+      }
+      unsigned long int wordDuration = durationToSamples(durationMs);
       unsigned long int endOfChar = 0;
       if (wordDuration < BUF_LEN)
       {
