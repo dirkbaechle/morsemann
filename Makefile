@@ -4,7 +4,7 @@
 #   all, allusers, clean, clean-dist
 #
 # Prerequisites for compiling:
-#   make, ncurses-dev, libasound2-dev
+#   make, ncurses-dev, libasound2-dev, [portaudio19-dev]
 #
 
 # Your favourite C++ compiler/Ihr C++-Kompiler
@@ -18,8 +18,10 @@ CURSESLIB = -lncurses
 # properly support colors...
 # CXXFLAGS += -DNO_COLORS
 
-CXXFLAGS += -DHAVE_ALSA -g -O2 -Wall -Wextra
-SOUNDLIBS = -lasound
+#CXXFLAGS += -DHAVE_ALSA -g -O2 -Wall -Wextra
+CXXFLAGS += -DHAVE_PORTAUDIO -g -O2 -Wall -Wextra
+#SOUNDLIBS = -lasound
+SOUNDLIBS = -lportaudio
 
 #
 # You shouldn't have to edit something below here!!!

@@ -4,11 +4,17 @@
 #include "global.h"
 #include <map>
 
-#ifdef HAVE_ALSA
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
 #include <cmath>
+#endif
+#ifdef HAVE_ALSA
 #include <alsa/asoundlib.h>
 #endif
+#ifdef HAVE_PORTAUDIO
+#include <portaudio.h>
+#endif
 
+#include <functional>
 #include <iostream>
 
 using std::cout;
@@ -34,7 +40,9 @@ static unsigned int mmslSmoothen = 3;
 /** Gewähltes Sound-System für die Ausgabe der Morsezeichen (PC-Speaker oder ALSA) */
 static int mmslSystem = MMSL_NONE;
 
-#ifdef HAVE_ALSA
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+int channels = 1;
+int rate = 48000;
 // Length of our complete render buffer: 8 * 48000 = 384000
 #define BUF_LEN 384000
 // Render buffer for output to Alsa
@@ -43,11 +51,19 @@ unsigned short g_buffer[BUF_LEN];
 #define AUDIO_BUFFER_SIZE	16384
 unsigned short audio_buffer[AUDIO_BUFFER_SIZE];
 
+unsigned long int durationToSamples(unsigned long int msecDuration)
+{
+  unsigned long int nbSamples = rate * channels * (((float) msecDuration) / 1000.0);
+
+  return nbSamples;
+}
+
+#endif
+
+#ifdef HAVE_ALSA
 // Our output device
 snd_pcm_t *pcm_handle = NULL;
-int channels = 1;
 snd_pcm_format_t format = SND_PCM_FORMAT_S16_LE;
-int rate = 48000;
 
 bool initAlsa(const std::string& device)
 {
@@ -80,15 +96,7 @@ bool initAlsa(const std::string& device)
   return true;
 }
 
-
-unsigned long int durationToSamples(unsigned long int msecDuration)
-{
-  unsigned long int nbSamples = rate * channels * (((float) msecDuration) / 1000.0);
-
-  return nbSamples;
-}
-
-void playBufferAlsa(unsigned long int nbSamples, bool sound = true)
+void playBufferAlsa(unsigned long int nbSamples, bool sound)
 {
   unsigned long int sample = 0;
   if (nbSamples > 0)
@@ -138,7 +146,136 @@ void playBufferAlsa(unsigned long int nbSamples, bool sound = true)
     }
   }
 }
+#else
+// Dummy Funktionen bereitstellen
+bool initAlsa(const std::string& /*device*/)
+{
+	cerr << "MMSound ALSA not supported (HAVE_ALSA is not defined)" << endl;
+  return false;
+}
 
+void playBufferAlsa(unsigned long int /*nbSamples*/, bool /*sound*/)
+{
+}
+#endif
+
+#ifdef HAVE_PORTAUDIO
+PaStreamParameters pa_outputParameters;
+PaStream *pa_stream = nullptr;
+PaError pa_err;
+
+bool initPortaudio(const std::string& device)
+{
+  pa_err = Pa_Initialize();
+  if (pa_err != paNoError)
+  {
+    cerr << "MMSound PORTAUDIO open error: " << Pa_GetErrorText(pa_err) << endl;
+    return false;
+  }
+
+  string pa_device(device);
+  if (pa_device.empty() || (pa_device == "default"))
+  {
+    pa_outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
+    if (pa_outputParameters.device == paNoDevice)
+    {
+      cerr << "MMSound PORTAUDIO open error: no default output device." << endl;
+      return false;
+    }
+  }
+  else
+  {
+    // TODO Implement!!!
+  }
+
+  pa_outputParameters.channelCount = channels;
+  pa_outputParameters.sampleFormat = paInt16; /* 16 bit integers (short, little endian) output */
+  pa_outputParameters.suggestedLatency = 0.050; // Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
+  pa_outputParameters.hostApiSpecificStreamInfo = NULL;
+
+  pa_err = Pa_OpenStream(
+              &pa_stream,
+              NULL, /* no input */
+              &pa_outputParameters,
+              rate,
+              AUDIO_BUFFER_SIZE,
+              paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+              NULL, /* no callback, use blocking API */
+              NULL ); /* no callback, so no callback userData */
+  if (pa_err != paNoError)
+  {
+    cerr << "MMSound PORTAUDIO open stream error: " << Pa_GetErrorText(pa_err) << endl;
+    return false;
+  }
+
+  return true;
+}
+
+void playBufferPortaudio(unsigned long int nbSamples, bool sound)
+{
+  unsigned long int sample = 0;
+  if (nbSamples > 0)
+  {
+    unsigned long int loops = nbSamples / AUDIO_BUFFER_SIZE;
+    unsigned long int i = 0;
+    unsigned long int j;
+    for (; i < loops; ++i)
+    {
+      if (sound)
+      {
+        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
+        {
+          audio_buffer[j] = g_buffer[sample++];
+        }
+      }
+      else
+      {
+        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
+        {
+          audio_buffer[j] = 0;
+          ++sample;
+        }
+      }
+      // Sending the sound
+      Pa_WriteStream(pa_stream, audio_buffer, AUDIO_BUFFER_SIZE);
+    }
+    unsigned long int remaining = nbSamples - sample;
+    if (remaining > 0)
+    {
+      if (sound)
+      {
+        for (j = 0; j < remaining; ++j)
+        {
+          audio_buffer[j] = g_buffer[sample++];
+        }
+      }
+      else
+      {
+        for (j = 0; j < remaining; ++j)
+        {
+          audio_buffer[j] = 0;
+        }
+      }
+      // Sending the sound
+      Pa_WriteStream(pa_stream, audio_buffer, remaining);
+    }
+    // TODO Wait until all frames are played!
+  }
+}
+#else
+// Dummy Funktionen bereitstellen
+bool initPortaudio(const std::string& /*device*/)
+{
+	cerr << "MMSound PORTAUDIO not supported (HAVE_PORTAUDIO is not defined)" << endl;
+  return false;
+}
+
+void playBufferPortaudio(unsigned long int /*nbSamples*/, bool /*sound*/)
+{
+}
+#endif
+
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
 void renderFrequencyToBuffer(int frequency)
 {
   int amp = 100;
@@ -192,6 +329,13 @@ float smootherStep(float x)
   return x * x * x * (x * (6.0f * x - 15.0f) + 10.0f);
 }
 
+std::function<float(float)> smoothenAmplitude[4] = {
+  nullptr,
+  &smoothStep,
+  &smootherStep,
+  &smoothSinSquared
+};
+
 unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
 {
   int amp = 100;
@@ -219,95 +363,13 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
     switch (mmslSmoothen)
     {
       case 1: // Smoothen with f(x) = -2x^3 + 3x^2
-              // Smoothen IN
-              for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
-              {
-                x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
-              }
-              if (rampStrategy == 1)
-              {
-                // Simulation eines Tiefpass-Verhaltens (ausklingendes Smoothing
-                // setzt erst nach dem Ende des Zeichens ein...
-
-                // Normal data
-                for (; currentSample < (endOfChar + toGo); ++currentSample)
-                {
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
-                }
-                // Smoothen OUT
-                for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
-                {
-                  x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
-                }
-              }
-              else
-              {
-                // Ein- und ausklingendes Smoothing befinden sich komplett
-                // "innerhalb" des Zeichens...
-
-                // Normal data
-                for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
-                {
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
-                }
-                // Smoothen OUT
-                for (; currentSample < (endOfChar + toGo); ++currentSample)
-                {
-                  x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothStep(x));
-                }
-              }
-              break;
       case 2: // Smoothen with f(x) = 6x^5 - 15x^4 + 10x^3
-              // Smoothen IN
-              for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
-              {
-                x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
-              }
-              if (rampStrategy == 1)
-              {
-                // Simulation eines Tiefpass-Verhaltens (ausklingendes Smoothing
-                // setzt erst nach dem Ende des Zeichens ein...
-
-                // Normal data
-                for (; currentSample < (endOfChar + toGo); ++currentSample)
-                {
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
-                }
-                // Smoothen OUT
-                for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
-                {
-                  x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
-                }
-              }
-              else
-              {
-                // Ein- und ausklingendes Smoothing befinden sich komplett
-                // "innerhalb" des Zeichens...
-
-                // Normal data
-                for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
-                {
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
-                }
-                // Smoothen OUT
-                for (; currentSample < (endOfChar + toGo); ++currentSample)
-                {
-                  x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smootherStep(x));
-                }
-              }
-              break;
       case 3: // Smoothen with f(x) = sin(PI/2*x)^2
               // Smoothen IN
               for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
               {
                 x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
               }
               if (rampStrategy == 1)
               {
@@ -323,7 +385,7 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
                 for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
                 {
                   x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
                 }
               }
               else
@@ -340,7 +402,7 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
                 for (; currentSample < (endOfChar + toGo); ++currentSample)
                 {
                   x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothSinSquared(x));
+                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
                 }
               }
               break;
@@ -365,6 +427,14 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
 
   return endOfChar;
 }
+
+std::function<void(unsigned long int, bool)> playBuffer[4] = {
+  nullptr,
+  nullptr,
+  &playBufferAlsa,
+  &playBufferPortaudio
+};
+
 #endif
 
 bool mmslInitSoundSystem(int system, const std::string &device)
@@ -398,6 +468,17 @@ bool mmslInitSoundSystem(int system, const std::string &device)
       cerr << "mmslInitSoundSystem: ALSA support is not available!" << endl;
       return false;
       break;
+    case MMSL_PORTAUDIO:
+#ifdef HAVE_PORTAUDIO
+      if (initPortaudio(device))
+      {
+        mmslSystem = MMSL_PORTAUDIO;
+        return true;  
+      }
+#endif
+      cerr << "mmslInitSoundSystem: PORTAUDIO support is not available!" << endl;
+      return false;
+      break;
     default:
       break;
   }
@@ -417,6 +498,14 @@ void mmslPrepareSoundStream()
       }
 #endif
       break;
+    case MMSL_PORTAUDIO:
+#ifdef HAVE_PORTAUDIO
+      if (pa_stream)
+      {
+        Pa_StartStream(pa_stream);
+      }
+#endif
+      break;
     default:
       break;
   }
@@ -431,6 +520,14 @@ void mmslDrainSoundStream()
       if (pcm_handle)
       {
         snd_pcm_drain(pcm_handle);
+      }
+#endif
+      break;
+    case MMSL_PORTAUDIO:
+#ifdef HAVE_PORTAUDIO
+      if (pa_stream)
+      {
+        Pa_StopStream(pa_stream);
       }
 #endif
       break;
@@ -456,6 +553,16 @@ void mmslCloseSoundSystem()
       }
 #endif
       break;
+    case MMSL_PORTAUDIO:
+#ifdef HAVE_PORTAUDIO
+      if (pa_stream)
+      {
+        Pa_CloseStream(pa_stream);
+        Pa_Terminate();
+        pa_stream = nullptr;
+      }
+#endif
+      break;
     default:
       break;
   }
@@ -470,6 +577,13 @@ bool mmslSoundSystemAvailable(int system)
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
+      return true;
+#else
+      return false;
+#endif
+      break;
+    case MMSL_PORTAUDIO:
+#ifdef HAVE_PORTAUDIO
       return true;
 #else
       return false;
@@ -510,8 +624,9 @@ void mmslPlayTone(unsigned long int duration)
       BeepWait();
       break;
     case MMSL_ALSA:
-#ifdef HAVE_ALSA
-      playBufferAlsa(durationToSamples(duration));
+    case MMSL_PORTAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+      playBuffer[mmslSystem](durationToSamples(duration), true);
 #endif
       break;
     default:
@@ -531,8 +646,9 @@ void mmslPlayPause(unsigned long int duration)
       AlarmWait();
       break;
     case MMSL_ALSA:
-#ifdef HAVE_ALSA    
-      playBufferAlsa(durationToSamples(duration), false);
+    case MMSL_PORTAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+      playBuffer[mmslSystem](durationToSamples(duration), false);
 #endif
       break;
     default:
@@ -551,15 +667,15 @@ void mmslPlayPauseWord()
       AlarmWait();
       break;
     case MMSL_ALSA:
-#ifdef HAVE_ALSA    
-      playBufferAlsa(durationToSamples(4 * mmslDelayFactor * mmslDotLength), false);
+    case MMSL_PORTAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+      playBuffer[mmslSystem](durationToSamples(4 * mmslDelayFactor * mmslDotLength), false);
 #endif
       break;
     default:
       break;
   }
 }
-
 
 /** Gibt einen Fehlerton aus.
 */
@@ -579,6 +695,10 @@ void mmslPlayErrorTone()
       break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
+#endif
+      break;
+    case MMSL_PORTAUDIO:
+#ifdef HAVE_PORTAUDIO
 #endif
       break;
   }
@@ -704,7 +824,8 @@ int mmslMorseWord(const string &msg)
 
       break;
     case MMSL_ALSA:
-#ifdef HAVE_ALSA
+    case MMSL_PORTAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
       // Maximale Länge des gesamten Wortes bei aktueller BpM Geschwindigkeit in Dots...
       unsigned long int elements = (slen * MAX_CHAR_ELEMENTS * 4) + (slen - 1) * 2 +
                                    (mmslDelayFactor - 1) * 3;
@@ -736,7 +857,7 @@ int mmslMorseWord(const string &msg)
           if (mmslDelayFactor > 1)
             endOfChar += durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength);
         }
-        playBufferAlsa(endOfChar);
+        playBuffer[mmslSystem](endOfChar, true);
       }
       else
       {
@@ -753,12 +874,12 @@ int mmslMorseWord(const string &msg)
 
           clearGlobalBuffer();
           unsigned long int endOfChar = renderMorseCharAt(c_it->second, (unsigned long int) 0);
-          playBufferAlsa(endOfChar);
+          playBuffer[mmslSystem](endOfChar, true);
           // 2 Dits Pause ...
-          playBufferAlsa(durationToSamples(2 * mmslDotLength), false);
+          playBuffer[mmslSystem](durationToSamples(2 * mmslDotLength), false);
           // plus ggf. die Verlängerung durch den delay-Faktor.
           if (mmslDelayFactor > 1)
-            playBufferAlsa(durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength), false);
+            playBuffer[mmslSystem](durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength), false);
         }
       }
 #endif

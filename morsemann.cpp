@@ -1404,8 +1404,15 @@ int main(int argc, char *argv[])
     return 0;
   }
 
+#ifdef HAVE_PORTAUDIO
+  if (!mmslInitSoundSystem(MMSL_PORTAUDIO))
+    return 1;
+#else
+#ifdef HAVE_ALSA
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
+#endif
+#endif
 
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
