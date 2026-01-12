@@ -47,8 +47,12 @@ int rate = 48000;
 #define BUF_LEN 384000
 // Render buffer for output to Alsa
 unsigned short g_buffer[BUF_LEN];
+#ifdef HAVE_ALSA
 // Length of our audio buffer towards ALSA: 16*1024 = 16384
 #define AUDIO_BUFFER_SIZE	16384
+#else
+#define AUDIO_BUFFER_SIZE	60
+#endif
 unsigned short audio_buffer[AUDIO_BUFFER_SIZE];
 
 unsigned long int durationToSamples(unsigned long int msecDuration)
@@ -160,9 +164,75 @@ void playBufferAlsa(unsigned long int /*nbSamples*/, bool /*sound*/)
 #endif
 
 #ifdef HAVE_PORTAUDIO
+typedef struct
+{
+    int finished;
+    unsigned long int totalFrames;
+    unsigned long int position;
+    bool playSound;
+
+    void reset(unsigned long int frames, bool sound)
+    {
+      finished = 0;
+      totalFrames = frames;
+      position = 0;
+      playSound = sound;
+    }
+}
+paPlayData;
+
 PaStreamParameters pa_outputParameters;
 PaStream *pa_stream = nullptr;
 PaError pa_err;
+paPlayData playData;
+
+/* Callback, wird von PortAudio aufgerufen um neue Frames zum Abspielen
+** in die internen Buffer zu übertragen.
+*/
+static int paPlayCallback(const void */*inputBuffer*/,
+                          void *outputBuffer,
+                          unsigned long framesPerBuffer,
+                          const PaStreamCallbackTimeInfo* /*timeInfo*/,
+                          PaStreamCallbackFlags /*statusFlags*/,
+                          void *userData)
+{
+  paPlayData *data = (paPlayData*) userData;
+  if (data->totalFrames == 0)
+  {
+    return paAbort;
+  }
+
+  short *out = (short*) outputBuffer;
+  unsigned long i;
+
+  for (i=0; i < framesPerBuffer; ++i)
+  {
+    if (data->playSound)
+      *out++ = g_buffer[data->position + i];
+    else
+      *out++ = 0;
+  }
+  data->position += framesPerBuffer;
+
+  if (framesPerBuffer <= data->totalFrames)
+  {
+    data->totalFrames -= framesPerBuffer;
+  }
+  else
+  {
+    data->totalFrames = 0;
+  }
+  return paContinue;
+}
+
+/*
+ * Callback-Routine, wird aufgerufen wenn alle Frames abgespielt wurden.
+ */
+static void paStreamFinished(void* userData)
+{
+  paPlayData *data = (paPlayData *) userData;
+  data->finished = 1;
+}
 
 bool initPortaudio(const std::string& device)
 {
@@ -200,11 +270,18 @@ bool initPortaudio(const std::string& device)
               rate,
               AUDIO_BUFFER_SIZE,
               paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-              NULL, /* no callback, use blocking API */
-              NULL ); /* no callback, so no callback userData */
+              paPlayCallback,
+              &playData);
   if (pa_err != paNoError)
   {
     cerr << "MMSound PORTAUDIO open stream error: " << Pa_GetErrorText(pa_err) << endl;
+    return false;
+  }
+
+  pa_err = Pa_SetStreamFinishedCallback(pa_stream, &paStreamFinished);
+  if (pa_err != paNoError)
+  {
+    cerr << "MMSound PORTAUDIO setting stream finished callback error: " << Pa_GetErrorText(pa_err) << endl;
     return false;
   }
 
@@ -213,53 +290,21 @@ bool initPortaudio(const std::string& device)
 
 void playBufferPortaudio(unsigned long int nbSamples, bool sound)
 {
-  unsigned long int sample = 0;
   if (nbSamples > 0)
   {
     unsigned long int loops = nbSamples / AUDIO_BUFFER_SIZE;
-    unsigned long int i = 0;
-    unsigned long int j;
-    for (; i < loops; ++i)
+    unsigned long int remainderFrames = nbSamples % AUDIO_BUFFER_SIZE;
+    unsigned long int moduloSamples = loops * AUDIO_BUFFER_SIZE;
+    if (remainderFrames > AUDIO_BUFFER_SIZE/2)
+      moduloSamples = (loops + 1) * AUDIO_BUFFER_SIZE;
+
+    playData.reset(moduloSamples, sound);
+    Pa_StartStream(pa_stream);
+    while (!playData.finished)
     {
-      if (sound)
-      {
-        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
-        {
-          audio_buffer[j] = g_buffer[sample++];
-        }
-      }
-      else
-      {
-        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
-        {
-          audio_buffer[j] = 0;
-          ++sample;
-        }
-      }
-      // Sending the sound
-      Pa_WriteStream(pa_stream, audio_buffer, AUDIO_BUFFER_SIZE);
+      Pa_Sleep(1);
     }
-    unsigned long int remaining = nbSamples - sample;
-    if (remaining > 0)
-    {
-      if (sound)
-      {
-        for (j = 0; j < remaining; ++j)
-        {
-          audio_buffer[j] = g_buffer[sample++];
-        }
-      }
-      else
-      {
-        for (j = 0; j < remaining; ++j)
-        {
-          audio_buffer[j] = 0;
-        }
-      }
-      // Sending the sound
-      Pa_WriteStream(pa_stream, audio_buffer, remaining);
-    }
-    // TODO Wait until all frames are played!
+    Pa_StopStream(pa_stream);
   }
 }
 #else
@@ -500,10 +545,6 @@ void mmslPrepareSoundStream()
       break;
     case MMSL_PORTAUDIO:
 #ifdef HAVE_PORTAUDIO
-      if (pa_stream)
-      {
-        Pa_StartStream(pa_stream);
-      }
 #endif
       break;
     default:
