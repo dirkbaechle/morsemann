@@ -899,6 +899,8 @@ void commonOptionsSelection(void)
   }
 }
 
+/** Aktualisiert die Anzeige der aktuellen Geschwindigkeit und Tonhöhe.
+ */
 void updateInfos(WINDOW *infowin)
 {
   ostringstream info;
@@ -911,6 +913,9 @@ void updateInfos(WINDOW *infowin)
   wrefresh(infowin);
 }
 
+/** Prüft ob während der Morseausgabe eine Cursortaste gedrückt wurde
+ * und ändert die Geschwindigkeit oder Tonhöhe entsprechend.
+ */
 int handleKeyPress(int b, WINDOW *infowin)
 {
   int error = MM_CONTINUE;
@@ -940,6 +945,9 @@ int handleKeyPress(int b, WINDOW *infowin)
   return error;
 }
 
+/** Liest die Eingabe des gehörten Wortes, oder wiederholt die Morseausgabe falls
+ * ein '#' eingegeben wird.
+ */
 int handleConfirmInput(WINDOW *confirmwin, WINDOW *infowin, const string &lastWord, string &userWord, int &action)
 {
   unsigned int b = 0;
