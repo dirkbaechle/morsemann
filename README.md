@@ -18,7 +18,15 @@ make
 ein. Nach kurzer Zeit sollte der Kompilier-Vorgang stoppen und eine
 ausführbare Datei namens `morsemann` erzeugt haben. Hierfür müssen
 im System `make`, der C++-Compiler `g++`, sowie die Pakete `ncurses-dev`
-und `alsa-dev` (bzw. `libasound2-dev`) installiert sein.
+und `alsa-dev` (bzw. `libasound2-dev`) installiert sein. Das Programm
+verwendet dann die Soundbibliothek ALSA (OSS) für die Ausgabe der Morsezeichen.
+Alternativ kann man auch gegen PortAudio kompilieren, dann benötigt man
+das `portaudio19-dev` Paket im System und der Aufruf zum Kompilieren
+lautet
+
+```
+make -f Makefile.portaudio
+```
 
 ## Credits
 
@@ -224,7 +232,7 @@ Feld in dem SIe jeweils die Worte einzeln bestätigen müssen.
 Dazu tippen Sie auf der Tastatur einfach das Wort, das Sie meinen
 gehört zu haben.
 Schließen Sie die Eingabe mit der `RETURN`-Taste ab. Mit der
-`BACKSPACE`-Taste können SIe einzelne Buchstaben zurücknehmen und die
+`BACKSPACE`-Taste können Sie einzelne Buchstaben zurücknehmen und die
 `#`-Taste wiederholt das Wort beliebig oft wenn Sie sich
 nicht sicher sind.
 

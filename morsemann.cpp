@@ -899,6 +899,8 @@ void commonOptionsSelection(void)
   }
 }
 
+/** Aktualisiert die Anzeige der aktuellen Geschwindigkeit und Tonhöhe.
+ */
 void updateInfos(WINDOW *infowin)
 {
   ostringstream info;
@@ -911,6 +913,9 @@ void updateInfos(WINDOW *infowin)
   wrefresh(infowin);
 }
 
+/** Prüft ob während der Morseausgabe eine Cursortaste gedrückt wurde
+ * und ändert die Geschwindigkeit oder Tonhöhe entsprechend.
+ */
 int handleKeyPress(int b, WINDOW *infowin)
 {
   int error = MM_CONTINUE;
@@ -940,6 +945,9 @@ int handleKeyPress(int b, WINDOW *infowin)
   return error;
 }
 
+/** Liest die Eingabe des gehörten Wortes, oder wiederholt die Morseausgabe falls
+ * ein '#' eingegeben wird.
+ */
 int handleConfirmInput(WINDOW *confirmwin, WINDOW *infowin, const string &lastWord, string &userWord, int &action)
 {
   unsigned int b = 0;
@@ -1404,8 +1412,15 @@ int main(int argc, char *argv[])
     return 0;
   }
 
+#ifdef HAVE_PORTAUDIO
+  if (!mmslInitSoundSystem(MMSL_PORTAUDIO))
+    return 1;
+#else
+#ifdef HAVE_ALSA
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
+#endif
+#endif
 
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */
 
