@@ -215,7 +215,9 @@ void readCharSet(void)
       if (((b < 97) || (b > 122)) && ((b < 48) || (b > 57)) && (b != 44) && (b != 46) && (b != 47) && (b != 61) && (b != 63))
       {
         error = MM_TRUE;
+        mmslPrepareSoundStream();
         mmslPlayErrorTone();
+        mmslDrainSoundStream();
       }
     }
   } while ((charSetLength == 0) || (error == MM_TRUE));
@@ -1070,6 +1072,7 @@ void outputMorseCode(void)
         textModusNormalW(mainwin);
         mmslPrepareSoundStream();
         mmslPlayErrorTone();
+        mmslPlayPause(500);
       }
       else
       {

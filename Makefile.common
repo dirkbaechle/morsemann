@@ -14,9 +14,7 @@ all: $(TARGET).cpp mmconfig.cpp mmsound/libmmsound.a mmscreen/libmmscreen.a mmwo
 test: $(TARGET)_tests.cpp mmword/libmmword.a 
 	$(CXX) $(TARGET)_tests.cpp -o $(TARGET)_tests $(CXXFLAGS) $(CINCLUDES) $(CTESTLIBS)
 
-mmsound/libmmsound.a: mmsound/mmsound.cpp mmsound/mmsound.h \
-                      mmsound/beep.cpp mmsound/beep.h \
-                      mmsound/alarm.cpp mmsound/alarm.h
+mmsound/libmmsound.a: mmsound/mmsound.cpp mmsound/mmsound.h
 	make -C mmsound
 
 mmscreen/libmmscreen.a: mmscreen/mmscreen.cpp mmscreen/mmscreen.h

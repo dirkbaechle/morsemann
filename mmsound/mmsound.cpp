@@ -1,6 +1,4 @@
 #include "mmsound.h"
-#include "beep.h"
-#include "alarm.h"
 #include "global.h"
 #include <map>
 
@@ -37,7 +35,7 @@ static int rampStrategy = 1;
 static unsigned int mmslFrequency = 800;
 /** Gewählte Funktion für das Formen (Smoothing) der Morsezeichen (0-2) */
 static unsigned int mmslSmoothen = 3;
-/** Gewähltes Sound-System für die Ausgabe der Morsezeichen (PC-Speaker oder ALSA) */
+/** Gewähltes Sound-System für die Ausgabe der Morsezeichen (ALSA oder PortAudio) */
 static int mmslSystem = MMSL_NONE;
 
 #if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
@@ -381,18 +379,94 @@ std::function<float(float)> smoothenAmplitude[4] = {
   &smoothSinSquared
 };
 
-unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
+
+unsigned long int renderMorseElementAt(int frequency,
+                                       unsigned long int toGo,
+                                       unsigned long int start,
+                                       unsigned long int ditSamples)
 {
   int amp = 100;
   int amplitude = (int)((double) amp * 327.67);
 
-  float t = ((float) 2 * M_PI * mmslFrequency) / (rate * channels);
-  unsigned long int ditSamples = durationToSamples(mmslDotLength);
+  float t = ((float) 2 * M_PI * frequency) / (rate * channels);
   unsigned long int endOfChar = start;
-  unsigned long int toGo = 0;
   unsigned long int currentSample = 0;
   unsigned long int smoothSamples = durationToSamples(rampLength);
   float x = 0.0;
+
+  switch (mmslSmoothen)
+  {
+    case 1: // Smoothen with f(x) = -2x^3 + 3x^2
+    case 2: // Smoothen with f(x) = 6x^5 - 15x^4 + 10x^3
+    case 3: // Smoothen with f(x) = sin(PI/2*x)^2
+            // Smoothen IN
+            for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
+            {
+              x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
+              g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
+            }
+            if (rampStrategy == 1)
+            {
+              // Simulation eines Tiefpass-Verhaltens (ausklingendes Smoothing
+              // setzt erst nach dem Ende des Zeichens ein...
+
+              // Normal data
+              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              {
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+              }
+              // Smoothen OUT
+              for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
+              {
+                x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
+              }
+            }
+            else
+            {
+              // Ein- und ausklingendes Smoothing befinden sich komplett
+              // "innerhalb" des Zeichens...
+
+              // Normal data
+              for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
+              {
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+              }
+              // Smoothen OUT
+              for (; currentSample < (endOfChar + toGo); ++currentSample)
+              {
+                x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
+                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
+              }
+            }
+            break;
+    default: // No smoothing at all
+            for (currentSample = endOfChar; currentSample < (endOfChar + toGo); ++currentSample)
+            {
+              g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+            }
+            break;
+  }
+  endOfChar += toGo;
+
+  // add a pause
+  if (rampStrategy == 1)
+  {
+    endOfChar += ditSamples - smoothSamples;
+  }
+  else
+  {
+    endOfChar += ditSamples;
+  }
+
+  return endOfChar;
+}
+
+unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
+{
+  unsigned long int ditSamples = durationToSamples(mmslDotLength);
+  unsigned long int endOfChar = start;
+  unsigned long int toGo = 0;
   for (size_t pos = 0; pos < cw.size(); ++pos)
   {
     if (cw[pos] == '.')
@@ -405,76 +479,28 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
       // render a dash
       toGo = 3 * ditSamples;
     }
-    switch (mmslSmoothen)
-    {
-      case 1: // Smoothen with f(x) = -2x^3 + 3x^2
-      case 2: // Smoothen with f(x) = 6x^5 - 15x^4 + 10x^3
-      case 3: // Smoothen with f(x) = sin(PI/2*x)^2
-              // Smoothen IN
-              for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
-              {
-                x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
-              }
-              if (rampStrategy == 1)
-              {
-                // Simulation eines Tiefpass-Verhaltens (ausklingendes Smoothing
-                // setzt erst nach dem Ende des Zeichens ein...
-
-                // Normal data
-                for (; currentSample < (endOfChar + toGo); ++currentSample)
-                {
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
-                }
-                // Smoothen OUT
-                for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
-                {
-                  x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
-                }
-              }
-              else
-              {
-                // Ein- und ausklingendes Smoothing befinden sich komplett
-                // "innerhalb" des Zeichens...
-
-                // Normal data
-                for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
-                {
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
-                }
-                // Smoothen OUT
-                for (; currentSample < (endOfChar + toGo); ++currentSample)
-                {
-                  x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                  g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
-                }
-              }
-              break;
-      default: // No smoothing at all
-              for (currentSample = endOfChar; currentSample < (endOfChar + toGo); ++currentSample)
-              {
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
-              }
-              break;
-    }
-    endOfChar += toGo;
-    // add a pause
-    if (rampStrategy == 1)
-    {
-      endOfChar += ditSamples - smoothSamples;
-    }
-    else
-    {
-      endOfChar += ditSamples;
-    }
+    endOfChar = renderMorseElementAt(mmslFrequency, toGo, endOfChar, ditSamples);
   }
 
   return endOfChar;
 }
 
-std::function<void(unsigned long int, bool)> playBuffer[4] = {
-  nullptr,
+unsigned long int renderErrorToneAt(unsigned long int start)
+{
+  unsigned long int ditSamples = durationToSamples(mmslDotLength);
+  unsigned long int endOfChar = start;
+  unsigned long int toGo = ditSamples;
+  for (int pos = 0; pos < 3; ++pos)
+  {
+    // render a point
+    endOfChar = renderMorseElementAt(700 - pos * 100, toGo, endOfChar, ditSamples);
+  }
+  endOfChar += 2 * ditSamples;
+
+  return endOfChar;
+}
+
+std::function<void(unsigned long int, bool)> playBuffer[3] = {
   nullptr,
   &playBufferAlsa,
   &playBufferPortaudio
@@ -491,17 +517,6 @@ bool mmslInitSoundSystem(int system, const std::string &device)
 
   switch (system)
   {
-    case MMSL_SPEAKER:
-      if (BeepInit () != 0)
-      {
-        cerr << "BeepInit: Can't access speaker!" << endl;
-        return false;
-      }
-      mmslSystem = MMSL_SPEAKER;
-
-      Beep(100, 0, 800);
-      BeepWait();
-      break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
       if (initAlsa(device))
@@ -581,9 +596,6 @@ void mmslCloseSoundSystem()
 {
   switch (mmslSystem)
   {
-    case MMSL_SPEAKER:
-        BeepCleanup();
-      break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
       if (pcm_handle)
@@ -613,9 +625,6 @@ bool mmslSoundSystemAvailable(int system)
 {
   switch (system)
   {
-    case MMSL_SPEAKER:
-      return true;
-      break;
     case MMSL_ALSA:
 #ifdef HAVE_ALSA
       return true;
@@ -656,25 +665,6 @@ unsigned int mmslGetFrequency()
   return mmslFrequency;
 }
 
-void mmslPlayTone(unsigned long int duration)
-{
-  switch (mmslSystem)
-  {
-    case MMSL_SPEAKER:
-      Beep((int) duration, 10, mmslFrequency);
-      BeepWait();
-      break;
-    case MMSL_ALSA:
-    case MMSL_PORTAUDIO:
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
-      playBuffer[mmslSystem](durationToSamples(duration), true);
-#endif
-      break;
-    default:
-      break;
-  }
-}
-
 /** Erzeugt eine Pause von \a duration Millisekunden.
 @param duration Anzahl der Millisekunden
 */
@@ -682,10 +672,6 @@ void mmslPlayPause(unsigned long int duration)
 {
   switch (mmslSystem)
   {
-    case MMSL_SPEAKER:
-      AlarmSet(duration);
-      AlarmWait();
-      break;
     case MMSL_ALSA:
     case MMSL_PORTAUDIO:
 #if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
@@ -703,10 +689,6 @@ void mmslPlayPauseWord()
 {
   switch (mmslSystem)
   {
-    case MMSL_SPEAKER:
-      AlarmSet(4 * mmslDelayFactor * mmslDotLength);
-      AlarmWait();
-      break;
     case MMSL_ALSA:
     case MMSL_PORTAUDIO:
 #if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
@@ -724,22 +706,12 @@ void mmslPlayErrorTone()
 {
   switch (mmslSystem)
   {
-    case MMSL_SPEAKER:
-      Beep(mmslDotLength, 10, 700);
-      BeepWait();
-      Beep(mmslDotLength, 10, 600);
-      BeepWait();
-      Beep(mmslDotLength, 10, 500);
-      BeepWait();
-      Beep(mmslDotLength*3, 0, 500);
-      BeepWait();
-      break;
     case MMSL_ALSA:
-#ifdef HAVE_ALSA
-#endif
-      break;
     case MMSL_PORTAUDIO:
-#ifdef HAVE_PORTAUDIO
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+      clearGlobalBuffer();
+      unsigned long int endOfChar = renderErrorToneAt(0);
+      playBuffer[mmslSystem](endOfChar, true);
 #endif
       break;
   }
@@ -837,33 +809,6 @@ int mmslMorseWord(const string &msg)
 
   switch (mmslSystem)
   {
-    case MMSL_SPEAKER:
-      // Einzelne Zeichen ausgeben
-      for (unsigned int scnt = 0; scnt < slen; ++scnt)
-      {
-        map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
-        if (c_it == cwCode.end())
-        {
-          res = MM_TRUE;
-          continue;
-        }
-
-        for (size_t i = 0; i < c_it->second.size(); ++i)
-        {
-          if (c_it->second[i] == '.')
-            mmslPlayTone(mmslDotLength);
-          else
-            mmslPlayTone(3 * mmslDotLength);
-          mmslPlayPause(mmslDotLength);
-        }
-        // 2 Dits Pause ...
-        mmslPlayPause(2 * mmslDotLength);
-        // plus ggf. die Verlängerung durch den delay-Faktor.
-        if (mmslDelayFactor > 1)
-          mmslPlayPause((mmslDelayFactor - 1) * 3 * mmslDotLength);
-      }
-
-      break;
     case MMSL_ALSA:
     case MMSL_PORTAUDIO:
 #if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)

@@ -17,7 +17,7 @@ RANLIB = ranlib
 #
 
 TARGET = mmsound
-AROBJS = beep.o alarm.o mmsound.o
+AROBJS = mmsound.o
 CINCLUDES += -I..
 CXXFLAGS += -DLINUXSIGS
 
@@ -35,4 +35,3 @@ lib$(TARGET).a: $(AROBJS)
 clean:
 	rm -f lib$(TARGET).a
 	rm -f *.o
-
