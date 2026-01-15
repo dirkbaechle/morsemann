@@ -30,12 +30,6 @@ make -f Makefile.portaudio
 
 ## Credits
 
-Die Dateien `beep.h`, `beepLinux.c` und `alarm.[ch]` wurden 
-unverändert dem Programm `morse` von Joe Dellinger entnommen. 
-Jeglicher Dank, dafür dass man unter Linux die Morsezeichen 
-im PC-Speaker auch hört und nicht nur sieht, gebührt daher
-Joe Dellinger, Scott Seligman und John Paul Morrison.
-
 Für die Verwaltung des Config-Files wurde eine Version des
 Paketes "inih" von Ben Hoyt (https://github.com/benhoyt/inih,
 7914ad7f4f43, 2025-03-17 02:28:26) benutzt.
@@ -239,6 +233,7 @@ nicht sicher sind.
 War die Eingabe richtig, so wird das Wort auf dem Bildschirm
 in normaler weißer Schrift geschrieben. Falsche Eingaben
 erscheinen in roter Schrift und zählen als Fehler.
+Zusätzlich wird ein kurzer Signalton ausgegeben.
 Abhängig von der Einstellung "Zähle Fehler pro" in den
 [Einstellungen](#einstellungen), zählt nur das falsche Wort als
 **ein** Fehler, oder es werden die falschen Buchstaben zur Gesamtzahl der Fehler addiert.

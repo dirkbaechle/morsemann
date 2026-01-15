@@ -5,9 +5,8 @@
 
 /** defines for the different sound systems */
 #define MMSL_NONE       0
-#define MMSL_SPEAKER    1
-#define MMSL_ALSA       2
-#define MMSL_PORTAUDIO  3
+#define MMSL_ALSA       1
+#define MMSL_PORTAUDIO  2
 
 extern bool mmslInitSoundSystem(int system, const std::string &device="default");
 extern void mmslPrepareSoundStream();
@@ -26,7 +25,6 @@ extern void mmslSetFrequency(unsigned int frequency);
 extern unsigned int mmslGetFrequency();
 
 
-extern void mmslPlayTone(unsigned long int duration);
 extern void mmslPlayPause(unsigned long int duration);
 extern void mmslPlayPauseWord();
 extern void mmslPlayErrorTone();
