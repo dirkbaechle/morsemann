@@ -5,6 +5,26 @@
 
 /*--------------------------------------------------------- Defines */
 
+//
+// OS-dependent definitions and variables
+//
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
+  #define OS_TYPE "windows"
+  #define KEY_DELETE 330
+  #ifndef _WIN64
+    #error "64-bit is required on Windows!"
+  #endif
+#elif __APPLE__
+  #define OS_TYPE "macos"
+  #define KEY_DELETE 127
+#elif defined(__linux__) || defined(__gnu_linux__)
+  #define OS_TYPE "linux"
+  #define KEY_DELETE 330
+#endif
+
+//
+// Common derfines
+//
 #define ENTER_CHAR 13
 #define KEY_ESCAPE 27
 #define KEY_REPEAT_MORSE 35

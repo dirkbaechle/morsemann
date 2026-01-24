@@ -7,6 +7,7 @@
 #define MMSL_NONE       0
 #define MMSL_ALSA       1
 #define MMSL_PORTAUDIO  2
+#define MMSL_PULSEAUDIO 3
 
 extern bool mmslInitSoundSystem(int system, const std::string &device="default");
 extern void mmslPrepareSoundStream();

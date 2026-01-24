@@ -2,16 +2,19 @@
 #include "global.h"
 #include <map>
 
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
-#include <cmath>
-#endif
 #ifdef HAVE_ALSA
 #include <alsa/asoundlib.h>
 #endif
 #ifdef HAVE_PORTAUDIO
 #include <portaudio.h>
 #endif
+#ifdef HAVE_PULSEAUDIO
+#include <pulse/pulseaudio.h>
+#include <pulse/simple.h>
+#include <pulse/error.h>
+#endif
 
+#include <cmath>
 #include <functional>
 #include <iostream>
 
@@ -35,31 +38,32 @@ static int rampStrategy = 1;
 static unsigned int mmslFrequency = 800;
 /** Gewählte Funktion für das Formen (Smoothing) der Morsezeichen (0-2) */
 static unsigned int mmslSmoothen = 3;
-/** Gewähltes Sound-System für die Ausgabe der Morsezeichen (ALSA oder PortAudio) */
+/** Gewähltes Sound-System für die Ausgabe der Morsezeichen (ALSA, PortAudio, Pulseaudio) */
 static int mmslSystem = MMSL_NONE;
 
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+
 int channels = 1;
-int rate = 48000;
-// Length of our complete render buffer: 8 * 48000 = 384000
-#define BUF_LEN 384000
+int samplerate = 48000;
+// Length of our complete render buffer: 80 * 48000 = 3840000
+#define BUF_LEN 3840000
 // Render buffer for output to Alsa
-unsigned short g_buffer[BUF_LEN];
-#ifdef HAVE_ALSA
+unsigned short int g_buffer[BUF_LEN];
+
+unsigned long int durationToSamples(unsigned long int msecDuration)
+{
+  unsigned long int nbSamples = samplerate * channels * (((float) msecDuration) / 1000.0);
+
+  return nbSamples;
+}
+
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
+#if defined(HAVE_ALSA) || defined(HAVE_PULSEAUDIO)
 // Length of our audio buffer towards ALSA: 16*1024 = 16384
 #define AUDIO_BUFFER_SIZE	16384
 #else
 #define AUDIO_BUFFER_SIZE	60
 #endif
-unsigned short audio_buffer[AUDIO_BUFFER_SIZE];
-
-unsigned long int durationToSamples(unsigned long int msecDuration)
-{
-  unsigned long int nbSamples = rate * channels * (((float) msecDuration) / 1000.0);
-
-  return nbSamples;
-}
-
+unsigned short int audio_buffer[AUDIO_BUFFER_SIZE];
 #endif
 
 #ifdef HAVE_ALSA
@@ -85,7 +89,7 @@ bool initAlsa(const std::string& device)
 				format,
 				SND_PCM_ACCESS_RW_INTERLEAVED,
 				channels,
-				rate,
+				samplerate,
 				1, /* period */
 				500000)) < 0) {  /* latency: 0.5s */
 		cerr << "MMSound ALSA error in snd_pcm_set_params: " << snd_strerror(err) << endl;
@@ -162,7 +166,7 @@ void playBufferAlsa(unsigned long int /*nbSamples*/, bool /*sound*/)
 #endif
 
 #ifdef HAVE_PORTAUDIO
-typedef struct
+typedef struct paPlayData
 {
     int finished;
     unsigned long int totalFrames;
@@ -182,7 +186,7 @@ paPlayData;
 PaStreamParameters pa_outputParameters;
 PaStream *pa_stream = nullptr;
 PaError pa_err;
-paPlayData playData;
+struct paPlayData playData;
 
 /* Callback, wird von PortAudio aufgerufen um neue Frames zum Abspielen
 ** in die internen Buffer zu übertragen.
@@ -194,7 +198,7 @@ static int paPlayCallback(const void */*inputBuffer*/,
                           PaStreamCallbackFlags /*statusFlags*/,
                           void *userData)
 {
-  paPlayData *data = (paPlayData*) userData;
+  struct paPlayData *data = (struct paPlayData*) userData;
   if (data->totalFrames == 0)
   {
     return paAbort;
@@ -228,7 +232,7 @@ static int paPlayCallback(const void */*inputBuffer*/,
  */
 static void paStreamFinished(void* userData)
 {
-  paPlayData *data = (paPlayData *) userData;
+  struct paPlayData *data = (struct paPlayData *) userData;
   data->finished = 1;
 }
 
@@ -265,7 +269,7 @@ bool initPortaudio(const std::string& device)
               &pa_stream,
               NULL, /* no input */
               &pa_outputParameters,
-              rate,
+              samplerate,
               AUDIO_BUFFER_SIZE,
               paClipOff,      /* we won't output out of range samples so don't bother clipping them */
               paPlayCallback,
@@ -318,22 +322,111 @@ void playBufferPortaudio(unsigned long int /*nbSamples*/, bool /*sound*/)
 }
 #endif
 
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+#ifdef HAVE_PULSEAUDIO
+// Our output device
+pa_simple *dsp_fd = nullptr;
+/* The Sample format to use */
+static pa_sample_spec ss = {
+	.format = PA_SAMPLE_S16LE,
+	.rate = (u_int32_t) samplerate,
+	.channels = (u_int8_t) channels
+};
+
+bool initPulseaudio(const std::string& /*device*/)
+{
+	int error;
+
+	if (!(dsp_fd = pa_simple_new(NULL, "Morsemann", PA_STREAM_PLAYBACK, NULL, 
+				"playback", &ss, NULL, NULL, &error))) {
+	        fprintf(stderr, "pa_simple_new() failed: %s\n", 
+		pa_strerror(error));
+    return false;
+	}
+
+  return true;
+}
+
+void playBufferPulseaudio(unsigned long int nbSamples, bool sound)
+{
+  int e;
+  unsigned long int sample = 0;
+  if (nbSamples > 0)
+  {
+    unsigned long int loops = nbSamples / AUDIO_BUFFER_SIZE;
+    unsigned long int i = 0;
+    unsigned long int j;
+    for (; i < loops; ++i)
+    {
+      if (sound)
+      {
+        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
+        {
+          audio_buffer[j] = g_buffer[sample++];
+        }
+      }
+      else
+      {
+        for (j = 0; j < AUDIO_BUFFER_SIZE; ++j)
+        {
+          audio_buffer[j] = 0;
+          ++sample;
+        }
+      }
+      // Sending the sound
+	    pa_simple_write(dsp_fd, audio_buffer, AUDIO_BUFFER_SIZE * sizeof(short int), &e);
+    }
+    unsigned long int remaining = nbSamples - sample;
+    if (remaining > 0)
+    {
+      if (sound)
+      {
+        for (j = 0; j < remaining; ++j)
+        {
+          audio_buffer[j] = g_buffer[sample++];
+        }
+      }
+      else
+      {
+        for (j = 0; j < remaining; ++j)
+        {
+          audio_buffer[j] = 0;
+        }
+      }
+      // Sending the sound
+	    pa_simple_write(dsp_fd, audio_buffer, remaining * sizeof(short int), &e);
+    }
+  }
+}
+#else
+// Dummy Funktionen bereitstellen
+bool initPulseaudio(const std::string& /*device*/)
+{
+	cerr << "MMSound Pulseaudio not supported (HAVE_PULSEAUDIO is not defined)" << endl;
+  return false;
+}
+
+void playBufferPulseaudio(unsigned long int /*nbSamples*/, bool /*sound*/)
+{
+}
+#endif
+
+
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
 void renderFrequencyToBuffer(int frequency)
 {
   int amp = 100;
   int amplitude = (int)((double) amp * 327.67);
 
-  float t = ((float) 2 * M_PI * frequency) / (rate * channels);
+  float t = ((float) 2 * M_PI * frequency) / (samplerate * channels);
   for (int i = 0; i < BUF_LEN; ++i) {
-      g_buffer[i] = (int) (sin(t*i) * amplitude);
+      g_buffer[i] = (unsigned short int) (sin(t*i) * amplitude);
   }
 }
 
 void clearGlobalBuffer()
 {
   for (int i = 0; i < BUF_LEN; ++i) {
-      g_buffer[i] = (int) 0;
+      g_buffer[i] = (unsigned short int) 0;
   }
 }
 
@@ -388,7 +481,7 @@ unsigned long int renderMorseElementAt(int frequency,
   int amp = 100;
   int amplitude = (int)((double) amp * 327.67);
 
-  float t = ((float) 2 * M_PI * frequency) / (rate * channels);
+  float t = ((float) 2 * M_PI * frequency) / (samplerate * channels);
   unsigned long int endOfChar = start;
   unsigned long int currentSample = 0;
   unsigned long int smoothSamples = durationToSamples(rampLength);
@@ -403,7 +496,7 @@ unsigned long int renderMorseElementAt(int frequency,
             for (currentSample = endOfChar; currentSample < (endOfChar + smoothSamples); ++currentSample)
             {
               x = ((float) (currentSample - endOfChar))/((float) smoothSamples);
-              g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
+              g_buffer[currentSample] = (unsigned short int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
             }
             if (rampStrategy == 1)
             {
@@ -413,13 +506,13 @@ unsigned long int renderMorseElementAt(int frequency,
               // Normal data
               for (; currentSample < (endOfChar + toGo); ++currentSample)
               {
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                g_buffer[currentSample] = (unsigned short int) (sin(t*currentSample) * amplitude);
               }
               // Smoothen OUT
               for (; currentSample < (endOfChar + toGo + smoothSamples); ++currentSample)
               {
                 x = ((float) (endOfChar + toGo + smoothSamples - currentSample))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
+                g_buffer[currentSample] = (unsigned short int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
               }
             }
             else
@@ -430,20 +523,20 @@ unsigned long int renderMorseElementAt(int frequency,
               // Normal data
               for (; currentSample < (endOfChar + toGo - smoothSamples); ++currentSample)
               {
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+                g_buffer[currentSample] = (unsigned short int) (sin(t*currentSample) * amplitude);
               }
               // Smoothen OUT
               for (; currentSample < (endOfChar + toGo); ++currentSample)
               {
                 x = ((float) (endOfChar + toGo - currentSample))/((float) smoothSamples);
-                g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
+                g_buffer[currentSample] = (unsigned short int) (sin(t*currentSample) * amplitude * smoothenAmplitude[mmslSmoothen](x));
               }
             }
             break;
     default: // No smoothing at all
             for (currentSample = endOfChar; currentSample < (endOfChar + toGo); ++currentSample)
             {
-              g_buffer[currentSample] = (int) (sin(t*currentSample) * amplitude);
+              g_buffer[currentSample] = (unsigned short int) (sin(t*currentSample) * amplitude);
             }
             break;
   }
@@ -500,10 +593,11 @@ unsigned long int renderErrorToneAt(unsigned long int start)
   return endOfChar;
 }
 
-std::function<void(unsigned long int, bool)> playBuffer[3] = {
+std::function<void(unsigned long int, bool)> playBuffer[4] = {
   nullptr,
   &playBufferAlsa,
-  &playBufferPortaudio
+  &playBufferPortaudio,
+  &playBufferPulseaudio
 };
 
 #endif
@@ -539,6 +633,17 @@ bool mmslInitSoundSystem(int system, const std::string &device)
       cerr << "mmslInitSoundSystem: PORTAUDIO support is not available!" << endl;
       return false;
       break;
+    case MMSL_PULSEAUDIO:
+#ifdef HAVE_PULSEAUDIO
+      if (initPulseaudio(device))
+      {
+        mmslSystem = MMSL_PULSEAUDIO;
+        return true;  
+      }
+#endif
+      cerr << "mmslInitSoundSystem: Pulseaudio support is not available!" << endl;
+      return false;
+      break;
     default:
       break;
   }
@@ -560,6 +665,10 @@ void mmslPrepareSoundStream()
       break;
     case MMSL_PORTAUDIO:
 #ifdef HAVE_PORTAUDIO
+#endif
+      break;
+    case MMSL_PULSEAUDIO:
+#ifdef HAVE_PULSEAUDIO
 #endif
       break;
     default:
@@ -585,6 +694,10 @@ void mmslDrainSoundStream()
       {
         Pa_StopStream(pa_stream);
       }
+#endif
+      break;
+    case MMSL_PULSEAUDIO:
+#ifdef HAVE_PULSEAUDIO
 #endif
       break;
     default:
@@ -616,6 +729,15 @@ void mmslCloseSoundSystem()
       }
 #endif
       break;
+    case MMSL_PULSEAUDIO:
+#ifdef HAVE_PULSEAUDIO
+      if (dsp_fd)
+      {
+        pa_simple_free(dsp_fd);
+        dsp_fd = nullptr;
+      }
+#endif
+      break;
     default:
       break;
   }
@@ -634,6 +756,13 @@ bool mmslSoundSystemAvailable(int system)
       break;
     case MMSL_PORTAUDIO:
 #ifdef HAVE_PORTAUDIO
+      return true;
+#else
+      return false;
+#endif
+      break;
+    case MMSL_PULSEAUDIO:
+#ifdef HAVE_PULSEAUDIO
       return true;
 #else
       return false;
@@ -674,7 +803,8 @@ void mmslPlayPause(unsigned long int duration)
   {
     case MMSL_ALSA:
     case MMSL_PORTAUDIO:
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+    case MMSL_PULSEAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
       playBuffer[mmslSystem](durationToSamples(duration), false);
 #endif
       break;
@@ -691,7 +821,8 @@ void mmslPlayPauseWord()
   {
     case MMSL_ALSA:
     case MMSL_PORTAUDIO:
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+    case MMSL_PULSEAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
       playBuffer[mmslSystem](durationToSamples(4 * mmslDelayFactor * mmslDotLength), false);
 #endif
       break;
@@ -708,7 +839,8 @@ void mmslPlayErrorTone()
   {
     case MMSL_ALSA:
     case MMSL_PORTAUDIO:
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+    case MMSL_PULSEAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
       clearGlobalBuffer();
       unsigned long int endOfChar = renderErrorToneAt(0);
       playBuffer[mmslSystem](endOfChar, true);
@@ -811,7 +943,8 @@ int mmslMorseWord(const string &msg)
   {
     case MMSL_ALSA:
     case MMSL_PORTAUDIO:
-#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO)
+    case MMSL_PULSEAUDIO:
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
       // Maximale Länge des gesamten Wortes bei aktueller BpM Geschwindigkeit in Dots...
       unsigned long int elements = (slen * MAX_CHAR_ELEMENTS * 4) + (slen - 1) * 2 +
                                    (mmslDelayFactor - 1) * 3;
