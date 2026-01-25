@@ -580,7 +580,14 @@ unsigned long int renderMorseCharAt(const string &cw, unsigned long int start)
 
 unsigned long int renderErrorToneAt(unsigned long int start)
 {
-  unsigned long int ditSamples = durationToSamples(mmslDotLength);
+  unsigned int errorDotLength = mmslDotLength;
+  // Auf mindestens Tempo 100BpM setzen
+  if (errorDotLength > 6000/100)
+    errorDotLength = 6000/100;
+  // Auf maximal 200BpM setzen
+  if (errorDotLength < 6000/200)
+    errorDotLength = 6000/200;
+  unsigned long int ditSamples = durationToSamples(errorDotLength);
   unsigned long int endOfChar = start;
   unsigned long int toGo = ditSamples;
   for (int pos = 0; pos < 3; ++pos)
@@ -930,13 +937,57 @@ const map<int, string> cwCode = {
 // Maximale Anzahl der Elemente in einem Morsezeichen
 #define MAX_CHAR_ELEMENTS 7
 
+unsigned long int durationMsForChars(unsigned int slen)
+{
+  // Maximale Länge des gesamten Wortes bei aktueller BpM Geschwindigkeit in Dots...
+  unsigned long int elements = (slen * MAX_CHAR_ELEMENTS * 4) + (slen - 1) * 2 +
+                               (mmslDelayFactor - 1) * 3;
+  // ...und in msecs.
+  unsigned int durationMs = elements * mmslDotLength;
+  if (rampStrategy == 1)
+  {
+    durationMs += rampLength;
+  }
+  return durationMs;
+}
+
+/** "Rendert" den übergebenen String in den internen Sample-Buffer.
+ * Startet beim Index 'from' innerhalb des Wortes und stoppt vor
+ * dem Index 'to', d.h. der Index 'to' ist in der Ausgabe nicht mit enthalten.
+ * @return Länge des auszugebenden Buffers in SoundFrames (-Samples)
+ */
+unsigned long int renderWordToBufferFromTo(const string &msg,
+                                           unsigned int from,
+                                           unsigned int to)
+{
+  unsigned long int endOfChar = 0;
+
+#if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
+  clearGlobalBuffer();
+  for (unsigned int scnt = from; scnt < to; ++scnt)
+  {
+    map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
+    if (c_it == cwCode.end())
+    {
+      continue;
+    }
+
+    endOfChar = renderMorseCharAt(c_it->second, endOfChar);
+    // 2 Dits Pause ...
+    endOfChar += durationToSamples(2 * mmslDotLength);
+    // plus ggf. die Verlängerung durch den delay-Faktor.
+    if (mmslDelayFactor > 1)
+      endOfChar += durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength);
+  }
+#endif 
+  return endOfChar;
+}                                           
+
 /** Gibt alle bekannten Zeichen des Strings in Morse-Code aus.
 @param msg Der zu gebende Text
-@return 1 wenn unbekannte Zeichen enthalten waren (Fehler), 0 sonst
 */
-int mmslMorseWord(const string &msg)
+void mmslMorseWord(const string &msg)
 {
-  int res = MM_FALSE;
   unsigned int slen = msg.size();
 
   switch (mmslSystem)
@@ -945,65 +996,55 @@ int mmslMorseWord(const string &msg)
     case MMSL_PORTAUDIO:
     case MMSL_PULSEAUDIO:
 #if defined(HAVE_ALSA) || defined(HAVE_PORTAUDIO) || defined(HAVE_PULSEAUDIO)
-      // Maximale Länge des gesamten Wortes bei aktueller BpM Geschwindigkeit in Dots...
-      unsigned long int elements = (slen * MAX_CHAR_ELEMENTS * 4) + (slen - 1) * 2 +
-                                   (mmslDelayFactor - 1) * 3;
-      // ...und in Samples.
-      unsigned int durationMs = elements * mmslDotLength;
-      if (rampStrategy == 1)
-      {
-        durationMs += rampLength;
-      }
-      unsigned long int wordDuration = durationToSamples(durationMs);
+      // Maximale Länge des gesamten Wortes in Samples...
+      unsigned long int wordDuration = durationToSamples(durationMsForChars(slen));
       unsigned long int endOfChar = 0;
       if (wordDuration < BUF_LEN)
       {
         // Das gesamte Wort wird in den Buffer gerendert
-        clearGlobalBuffer();
-        for (unsigned int scnt = 0; scnt < slen; ++scnt)
-        {
-          map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
-          if (c_it == cwCode.end())
-          {
-            res = MM_TRUE;
-            continue;
-          }
-
-          endOfChar = renderMorseCharAt(c_it->second, endOfChar);
-          // 2 Dits Pause ...
-          endOfChar += durationToSamples(2 * mmslDotLength);
-          // plus ggf. die Verlängerung durch den delay-Faktor.
-          if (mmslDelayFactor > 1)
-            endOfChar += durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength);
-        }
+        endOfChar = renderWordToBufferFromTo(msg, 0, slen);
         playBuffer[mmslSystem](endOfChar, true);
       }
       else
       {
         // Der Buffer ist bei aktueller Geschwindigkeit zu klein...
-        // die Zeichen werden einzeln ausgeben
-        for (unsigned int scnt = 0; scnt < slen; ++scnt)
+        // die Zeichen werden portionsweise ausgegeben
+
+        // Länge einer maximalen "Wort-Portion" bestimmen, die gerade so
+        // in den internen Buffer hineinpasst.
+        unsigned int wlen = slen - 1;
+        if (wlen >= 1)
         {
-          map<int, string>::const_iterator c_it = cwCode.find(msg[scnt]);
-          if (c_it == cwCode.end())
+          for (; wlen > 1; --wlen)
           {
-            res = MM_TRUE;
-            continue;
+            wordDuration = durationToSamples(durationMsForChars(wlen));
+            if (wordDuration < BUF_LEN)
+              break;
           }
 
-          clearGlobalBuffer();
-          unsigned long int endOfChar = renderMorseCharAt(c_it->second, (unsigned long int) 0);
-          playBuffer[mmslSystem](endOfChar, true);
-          // 2 Dits Pause ...
-          playBuffer[mmslSystem](durationToSamples(2 * mmslDotLength), false);
-          // plus ggf. die Verlängerung durch den delay-Faktor.
-          if (mmslDelayFactor > 1)
-            playBuffer[mmslSystem](durationToSamples((mmslDelayFactor - 1) * 3 * mmslDotLength), false);
+          unsigned int woffset = 0;
+          for (; (woffset+wlen) <= slen;)
+          {
+            endOfChar = renderWordToBufferFromTo(msg, woffset, woffset+wlen);
+            playBuffer[mmslSystem](endOfChar, true);
+
+            woffset += wlen;
+          }
+          if (woffset < slen)
+          {
+            endOfChar = renderWordToBufferFromTo(msg, woffset, slen);
+            playBuffer[mmslSystem](endOfChar, true);
+          }
+        }
+        else
+        {
+          // TODO Effektive Morsegeschwindigkeit zu klein für die aktuelle Buffergröße...
+          // Dies sollte aber bei der aktuellen Min-BpM des Morsemannes nicht passieren
+          // und ist eher ein Hinweis falls diese Routine in anderen Programmen/Projekten
+          // benutzt wird.
         }
       }
 #endif
       break;
   }
-
-  return res;
 }

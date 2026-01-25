@@ -1,7 +1,7 @@
 # Morsemann
 Ein Programm für das Lernen und Üben des Hörens von Morsezeichen (CW)
 
-Copyright (C) 2003-2025 by Dirk Bächle (dl9obn@darc.de)
+Copyright (C) 2003-2026 by Dirk Bächle (dl9obn@darc.de)
 
 https://github.com/dirkbaechle/morsemann
 
@@ -26,6 +26,13 @@ lautet
 
 ```
 make -f Makefile.portaudio
+```
+
+Eine weitere Option ist Pulseaudio, dann benötigt man das `libpulse-dev` Paket
+und der Aufruf zum Kompilieren lautet
+
+```
+make -f Makefile.pulseaudio
 ```
 
 ## Credits

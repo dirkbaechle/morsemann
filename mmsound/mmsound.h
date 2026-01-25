@@ -29,6 +29,6 @@ extern unsigned int mmslGetFrequency();
 extern void mmslPlayPause(unsigned long int duration);
 extern void mmslPlayPauseWord();
 extern void mmslPlayErrorTone();
-extern int mmslMorseWord(const std::string &msg);
+extern void mmslMorseWord(const std::string &msg);
 
 #endif

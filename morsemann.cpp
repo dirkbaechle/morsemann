@@ -1,7 +1,7 @@
 /* Morsemann - Ein kleines Programm zum Lernen und Üben des
 *              Hörens von Morsezeichen (CW).
 *
-* Copyright (C) 2003-2025 by Dirk Baechle (dl9obn@darc.de)
+* Copyright (C) 2003-2026 by Dirk Baechle (dl9obn@darc.de)
 *
 * https://github.com/dirkbaechle/morsemann
 *
