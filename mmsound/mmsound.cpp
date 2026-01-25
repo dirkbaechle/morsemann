@@ -257,7 +257,7 @@ bool initPortaudio(const std::string& device)
   }
   else
   {
-    // TODO Implement!!!
+    // TODO Potentially implement manual sound device selection
   }
 
   pa_outputParameters.channelCount = channels;
@@ -658,6 +658,11 @@ bool mmslInitSoundSystem(int system, const std::string &device)
   return true;
 }
 
+int mmslGetSoundSystem()
+{
+  return mmslSystem;
+}
+
 void mmslPrepareSoundStream()
 {
   switch (mmslSystem)
@@ -677,6 +682,26 @@ void mmslPrepareSoundStream()
     case MMSL_PULSEAUDIO:
 #ifdef HAVE_PULSEAUDIO
 #endif
+      break;
+    default:
+      break;
+  }
+}
+
+/** Sicherstellen dass der Stream im Play-Zustand ist.
+ */
+void mmslEnforcePlayStateForStream()
+{
+  // TODO Herausfinden warum man diesen Hack braucht,
+  // und warum nur für ALSA und warum nur für 190BpM+.
+  switch (mmslSystem)
+  {
+    case MMSL_ALSA:
+#ifdef HAVE_ALSA
+      if (snd_pcm_state(pcm_handle) == SND_PCM_STATE_PREPARED) {
+        snd_pcm_start(pcm_handle);
+      }
+#endif    
       break;
     default:
       break;

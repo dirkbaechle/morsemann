@@ -10,7 +10,9 @@
 #define MMSL_PULSEAUDIO 3
 
 extern bool mmslInitSoundSystem(int system, const std::string &device="default");
+extern int mmslGetSoundSystem();
 extern void mmslPrepareSoundStream();
+extern void mmslEnforcePlayStateForStream();
 extern void mmslDrainSoundStream();
 extern void mmslCloseSoundSystem();
 

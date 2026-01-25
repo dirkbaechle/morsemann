@@ -1172,6 +1172,7 @@ void outputMorseCode(void)
 
   time_t endTime = time(NULL);
   writeStringW(mainwin, "\n\r+");
+  mmslEnforcePlayStateForStream();
   mmslMorseWord("+");
   releaseWordFile();
   if (confirmWords == MM_TRUE)
