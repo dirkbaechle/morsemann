@@ -7,9 +7,12 @@
 #define MMSL_NONE       0
 #define MMSL_ALSA       1
 #define MMSL_PORTAUDIO  2
+#define MMSL_PULSEAUDIO 3
 
 extern bool mmslInitSoundSystem(int system, const std::string &device="default");
+extern int mmslGetSoundSystem();
 extern void mmslPrepareSoundStream();
+extern void mmslEnforcePlayStateForStream();
 extern void mmslDrainSoundStream();
 extern void mmslCloseSoundSystem();
 
@@ -28,6 +31,6 @@ extern unsigned int mmslGetFrequency();
 extern void mmslPlayPause(unsigned long int duration);
 extern void mmslPlayPauseWord();
 extern void mmslPlayErrorTone();
-extern int mmslMorseWord(const std::string &msg);
+extern void mmslMorseWord(const std::string &msg);
 
 #endif

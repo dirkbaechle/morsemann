@@ -1,12 +1,62 @@
-# Makefile for/für ``Morsemann'' - Common target defintions
+# Makefile for/für ``Morsemann'' - Common target definitions
 #
+
+# Your favourite archiver (ar)/Ihr Archivierer (ar)
+AR = ar
+# Your favourite Ranlib (ranlib)/Ihr Ranlib-Programm (ranlib)
+RANLIB = ranlib
 
 TARGET = morsemann
 CINCLUDES = -I./mmsound -I./mmscreen -I./mmword -I./inih -I./inih/cpp -I.
-CLIBS = -L./mmscreen -lmmscreen $(CURSESLIB) -L./mmsound -lmmsound $(SOUNDLIBS) -L./mmword -lmmword -L./inih -linih
+CLIBS = -L./mmscreen -lmmscreen -L./mmsound -lmmsound $(SOUNDLIBS) -L./mmword -lmmword -L./inih -linih
 CTESTLIBS = -L./mmword -lmmword
 
+#
+# OS-dependent definitions and variables
+#
+ifeq ($(OS),Windows_NT)
+    CXXFLAGS += -D WIN32
+	CLIBS += -L C:\msys64\mingw64\lib -DNCURSES_STATIC
+	AROPTS = -ro
+    ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
+        CXXFLAGS += -D AMD64
+    else
+        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+            CXXFLAGS += -D AMD64
+        endif
+        ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+            CXXFLAGS += -D IA32
+        endif
+    endif
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+	    AROPTS = -ro
+        CXXFLAGS += -D LINUX
+    endif
+    ifeq ($(UNAME_S),Darwin)
+	    AROPTS = -r
+        CXXFLAGS += -D OSX
+    endif
+    UNAME_P := $(shell uname -p)
+    ifeq ($(UNAME_P),x86_64)
+        CXXFLAGS += -D AMD64
+    endif
+    ifneq ($(filter %86,$(UNAME_P)),)
+        CXXFLAGS += -D IA32
+    endif
+    ifneq ($(filter arm%,$(UNAME_P)),)
+        CXXFLAGS += -D ARM
+    endif
+endif
+
+CLIBS += $(CURSESLIB)
+
+export CXX
 export CXXFLAGS
+export AR
+export AROPTS
+export RANLIB
 
 all: $(TARGET).cpp mmconfig.cpp mmsound/libmmsound.a mmscreen/libmmscreen.a mmword/libmmword.a inih/libinih.a 
 	$(CXX) $(TARGET).cpp mmconfig.cpp -o $(TARGET) $(CXXFLAGS) $(CINCLUDES) $(CLIBS)
@@ -26,10 +76,6 @@ mmword/libmmword.a: mmword/mmword.cpp mmword/mmword.h \
 
 inih/libinih.a:
 	make -C inih
-
-allusers:
-	chown root:root ./morsemann
-	chmod a+sx ./morsemann
 
 clean:
 	rm -f morsemann morsemann_tests

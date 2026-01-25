@@ -304,7 +304,8 @@ int confirmString(WINDOW *curwin, int xpos, int ypos, int max, string& str)
       while (kbhit() != 0) wgetch(curwin);
     }
 
-    if (letter == KEY_BACKSPACE)
+    if ((letter == KEY_BACKSPACE) ||
+        (letter == KEY_DELETE))
     {
       if (stringLength > 0)
       {
@@ -376,7 +377,8 @@ string readString(int xpos, int ypos, int max, const string& str)
   {
     letter = getch();
 
-    if (letter == KEY_BACKSPACE)
+    if ((letter == KEY_BACKSPACE) ||
+        (letter == KEY_DELETE))
     {
       if (stringLength > 0)
       {
@@ -436,7 +438,8 @@ unsigned long int readNumber(int xpos, int ypos, int max, unsigned long int numb
   while ((letter != KEY_ESCAPE) && (letter != ENTER_CHAR))
   {
     letter = getch();
-    if (letter == KEY_BACKSPACE)
+    if ((letter == KEY_BACKSPACE) ||
+        (letter == KEY_DELETE))
     {
       if (stringLength > 0)
       {

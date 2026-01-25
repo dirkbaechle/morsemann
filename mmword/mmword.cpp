@@ -7,9 +7,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <set>
 
 using std::string;
 using std::vector;
+using std::set;
 
 /*--------------------------------------------------------- Defines */
 
@@ -63,6 +65,7 @@ int fileWordsExtendedCharset = MM_FALSE;
  * ausgegeben werden sollen.
  */
 vector<string> randomWords;
+set<string> randomWordsSet;
 
 /*--------------------------------------------------- Functions */
 
@@ -257,22 +260,16 @@ void prepareWordFile()
     {
       openUtf8File();
       randomWords.clear();
+      randomWordsSet.clear();
       do
       {
         word = readUtf8WordFromOpenFileVerbatim(error);
         if ((error != MM_UTF8_EOF) && (word.size() > 0))
         {
-          vector<string>::const_iterator s_it = randomWords.begin();
-          for (; s_it != randomWords.end(); ++s_it)
+          if (randomWordsSet.find(word) == randomWordsSet.end())
           {
-            if (*s_it == word)
-            {
-              break;
-            }
-          }
-          if (s_it == randomWords.end())
-          {
-            // new word
+            // neues Wort
+            randomWordsSet.insert(word);
             randomWords.push_back(word);
           }
         }
@@ -293,6 +290,7 @@ void releaseWordFile()
     closeUtf8File();
   }
   randomWords.clear();
+  randomWordsSet.clear();
 }
 
 void mmwlSetCountErrorsPerWord(int countWords)

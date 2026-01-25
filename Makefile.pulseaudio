@@ -1,0 +1,29 @@
+# Makefile for/für ``Morsemann'' - Pulseaudio
+#
+# Available targets/Verfügbare ``Targets'':
+#   all, allusers, clean, clean-dist
+#
+# Prerequisites for compiling:
+#   make, ncurses-dev, libpulse-dev
+#
+
+# Your favourite C++ compiler/Ihr C++-Kompiler
+CXX	= g++
+
+# Select your curses lib
+#CURSESLIB = -lcurses
+CURSESLIB = -lncurses
+
+# Uncomment next line if your curses terminal does not
+# properly support colors...
+# CXXFLAGS += -DNO_COLORS
+
+CXXFLAGS += -DHAVE_PULSEAUDIO -g -O2 -Wall -Wextra
+SOUNDLIBS = -lpulse-simple -lpulse
+
+#
+# You shouldn't have to edit something below here!!!
+# Ab dieser Zeile bitte nichts mehr ändern!!!
+#
+
+include Makefile.common

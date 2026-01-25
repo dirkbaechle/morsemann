@@ -576,7 +576,6 @@ string getUtf8Token(std::istream &stream,
         (type != TT_SPACE))
     {
       word = getFilteredUtf8Chars(word, type);
-      // TODO check if we want to have this
       if (word.size() == 0)
       {
         type = TT_NONE;

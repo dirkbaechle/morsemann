@@ -1,7 +1,7 @@
 /* Morsemann - Ein kleines Programm zum Lernen und Üben des
 *              Hörens von Morsezeichen (CW).
 *
-* Copyright (C) 2003-2025 by Dirk Baechle (dl9obn@darc.de)
+* Copyright (C) 2003-2026 by Dirk Baechle (dl9obn@darc.de)
 *
 * https://github.com/dirkbaechle/morsemann
 *
@@ -246,7 +246,9 @@ void charGroupSelection(void)
   clrscr();
   writeSelection("Auswahl der Zeichen", centerX-10, centerY-5, 1, 2);
 
-  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
+  while ((b != KEY_BACKSPACE) &&
+         (b != KEY_DELETE) &&
+         (b != ENTER_CHAR))
   {
     charGroupMenu();
     b = getch();
@@ -350,7 +352,9 @@ void speedSelection(void)
   textModusSelect();
   unsigned int bpm;
 
-  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
+  while ((b != KEY_BACKSPACE) &&
+         (b != KEY_DELETE) &&
+         (b != ENTER_CHAR))
   {
     gotoxy(centerX-3, centerY+1);
     bpm = mmslGetBpm();
@@ -390,7 +394,9 @@ void delaySelection(void)
   textModusSelect();
 
   unsigned int delayFactor = mmslGetDelayFactor();
-  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
+  while ((b != KEY_BACKSPACE) &&
+         (b != KEY_DELETE) &&
+         (b != ENTER_CHAR))
   {
     gotoxy(centerX-5, centerY+1);
     writeNumber(delayFactor);
@@ -560,7 +566,7 @@ void morseOptionsSelection(void)
 
   if (wordMode == MM_WM_FILE)
     rescanUtf8File();
-  while (b != KEY_BACKSPACE)
+  while ((b != KEY_BACKSPACE) && (b != KEY_DELETE))
   {
     morseOptionsMenu(currentOption);
     b = getch();
@@ -692,7 +698,9 @@ void frequencySelection(void)
 
   textModusSelect();
 
-  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
+  while ((b != KEY_BACKSPACE) &&
+         (b != KEY_DELETE) &&
+         (b != ENTER_CHAR))
   {
     gotoxy(centerX-3, centerY+1);
 
@@ -732,7 +740,9 @@ void soundShapingSelection(void)
   keyChar b = '0';
 
   int selectedShaping;
-  while ((b != KEY_BACKSPACE) && (b != ENTER_CHAR))
+  while ((b != KEY_BACKSPACE) &&
+         (b != KEY_DELETE) &&
+         (b != ENTER_CHAR))
   {
 
     clrscr();
@@ -848,7 +858,7 @@ void commonOptionsSelection(void)
   // behalten möchten.
   int oldSaveOptions = saveOptionsToIniFile;
 
-  while (b != KEY_BACKSPACE)
+  while ((b != KEY_BACKSPACE) && (b != KEY_DELETE))
   {
     commonOptionsMenu(currentOption);
     b = getch();
@@ -924,6 +934,7 @@ int handleKeyPress(int b, WINDOW *infowin)
   switch (b)
   {
     case KEY_BACKSPACE:
+    case KEY_DELETE:
     case KEY_ESCAPE: error = MM_ESCAPE;
                       break;
     case KEY_UP: // Tone up
@@ -1047,6 +1058,7 @@ void outputMorseCode(void)
   mmslPrepareSoundStream();
   mmslPlayPause(1000);
 
+  time_t startTime = time(NULL);
   do
   {
     if (confirmWords == MM_TRUE)
@@ -1158,7 +1170,9 @@ void outputMorseCode(void)
     --filePosition;
   }
 
+  time_t endTime = time(NULL);
   writeStringW(mainwin, "\n\r+");
+  mmslEnforcePlayStateForStream();
   mmslMorseWord("+");
   releaseWordFile();
   if (confirmWords == MM_TRUE)
@@ -1167,6 +1181,24 @@ void outputMorseCode(void)
     writeNumberW(mainwin, errorCount);
     writeStringW(mainwin, " Fehler)");
   }
+
+  if (wordMode == MM_WM_PARIS)
+  {
+    // Zeit für die Ausgabe auswerten und mit Erwartung
+    // vergleichen...
+    time_t usedTime = endTime - startTime;
+    time_t expectedTime = currentLength * 60 / mmslGetBpm();
+    time_t diffTime = abs(usedTime - expectedTime);
+    float effBpm = (60.0 * currentLength) / (1.0 * usedTime);
+
+    ostringstream info;
+    info << "Time difference: " << diffTime << "s, accuracy error in percent: " << diffTime * 100.0 / expectedTime;
+    info << ", effective BpM: " << effBpm;
+    string infoText = info.str();
+    writeStringW(mainwin, "\n\r");
+    writeStringW(mainwin, infoText);
+  }
+
   if (confirmWords == MM_TRUE) 
     wmove(mainwin, screenY - 6, centerX - 15);
   else
@@ -1418,11 +1450,14 @@ int main(int argc, char *argv[])
 #ifdef HAVE_PORTAUDIO
   if (!mmslInitSoundSystem(MMSL_PORTAUDIO))
     return 1;
-#else
+#endif
 #ifdef HAVE_ALSA
   if (!mmslInitSoundSystem(MMSL_ALSA))
     return 1;
 #endif
+#ifdef HAVE_PULSEAUDIO
+  if (!mmslInitSoundSystem(MMSL_PULSEAUDIO))
+    return 1;
 #endif
 
   (void) signal(SIGINT, finish);      /* arrange interrupts to terminate */

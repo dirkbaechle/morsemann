@@ -1,0 +1,32 @@
+# Makefile for/für ``Morsemann'' - Sanitizer version for debugging/optimizing
+#
+# Available targets/Verfügbare ``Targets'':
+#   all, allusers, clean, clean-dist
+#
+# Prerequisites for compiling:
+#   make, ncurses-dev, libasound2-dev
+#
+
+# Your favourite C++ compiler/Ihr C++-Kompiler
+CXX	= g++
+
+# Select your curses lib
+#CURSESLIB = -lcurses
+CURSESLIB = -lncurses
+
+# Uncomment next line if your curses terminal does not
+# properly support colors...
+# CXXFLAGS += -DNO_COLORS
+
+CXXFLAGS += -DHAVE_ALSA -fsanitize=address -fsanitize=undefined -g3 -O0 -Wall -Wextra -pedantic 
+SOUNDLIBS = -lasound
+# or
+#CXXFLAGS += -DHAVE_PORTAUDIO -fsanitize=address -fsanitize=undefined -g3 -O0 -Wall -Wextra -pedantic 
+#SOUNDLIBS = -lportaudio
+
+#
+# You shouldn't have to edit something below here!!!
+# Ab dieser Zeile bitte nichts mehr ändern!!!
+#
+
+include Makefile.common
