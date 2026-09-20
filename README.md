@@ -5,6 +5,8 @@ Copyright (C) 2003-2026 by Dirk Bächle (dl9obn@darc.de)
 
 https://github.com/dirkbaechle/morsemann
 
+![](images/overview_video.mp4)
+
 ## Kompilieren des Programmes (Linux)
 
 Wechseln sie in das geclonte Verzeichnis `morsemann`.
@@ -186,7 +188,7 @@ die Ausgabe alle 200 Buchstaben stoppt und man die Ausgabe erneut
 starten muss.
 In diesem Fall kann man diese Option auf "Nein" setzen. Der *Morsemann*
 wird dann bei der Ausgabe aus einer Datei die gesetzte Maximalanzahl
-von zu gebenende Buchstaben nicht beachten. Die Ausgabe kann dann
+von zu gebenden Buchstaben nicht beachten. Die Ausgabe kann dann
 nur noch durch Betätigen der `ESC`- oder `BACKSPACE`-Tasten gestoppt
 werden, oder stoppt automatisch wenn das Dateiende erreicht wird.
 - **Wortzähler**: Merkt sich die Anzahl der Worte, die bisher im
@@ -229,7 +231,7 @@ anhalten, sondern Worte hintereinander geben und direkt im Anschluss das
 gegebene Wort auch auf den Bildschirm schreiben.
 
 Das ist im Bestätigungs-Modus anders. Hier erscheint ein abgesetztes
-Feld in dem SIe jeweils die Worte einzeln bestätigen müssen.
+Feld in dem Sie jeweils die Worte einzeln bestätigen müssen.
 Dazu tippen Sie auf der Tastatur einfach das Wort, das Sie meinen
 gehört zu haben.
 Schließen Sie die Eingabe mit der `RETURN`-Taste ab. Mit der

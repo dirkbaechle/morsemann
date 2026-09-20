@@ -23,7 +23,7 @@
 #endif
 
 //
-// Common derfines
+// Common defines
 //
 #define ENTER_CHAR 13
 #define KEY_ESCAPE 27
