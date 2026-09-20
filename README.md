@@ -5,7 +5,7 @@ Copyright (C) 2003-2026 by Dirk Bächle (dl9obn@darc.de)
 
 https://github.com/dirkbaechle/morsemann
 
-https://github.com/dirkbaechle/morsemann/blob/master/images/overview_video.mp4
+https://raw.githubusercontent.com/dirkbaechle/morsemann/blob/master/images/overview_video.mp4
 
 ## Kompilieren des Programmes (Linux)
 
